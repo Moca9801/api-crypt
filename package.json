@@ -1,0 +1,26 @@
+{
+  "name": "api-crypt",
+  "version": "1.0.0",
+  "description": "API for cryptographic operations for web services",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moca9801/api-crypt.git"
+  },
+  "keywords": [
+    "crypto",
+    "encrypt",
+    "decrypt",
+    "sign",
+    "hash"
+  ],
+  "author": "Angel Israel Moreno Castellanos",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Moca9801/api-crypt/issues"
+  },
+  "homepage": "https://github.com/Moca9801/api-crypt#readme"
+}
