@@ -1,14 +1,8 @@
-import { KeyGenOptions, SealedBlob, SignAlg } from '../../../libs/services/crypt.service';
+import { HybridEncryptResult, KeyGenOptions, SealedBlob, SignAlg } from '../../../libs/services/crypt.service';
 
 export interface CryptoProviderPort {
     generateKeyPair(opts: KeyGenOptions): { algorithm: string; publicKey: string; privateKey: string };
-    hybridEncrypt(plaintext: string, publicKeyPem: string): {
-        scheme: string;
-        encryptedAesKey: string;
-        iv: string;
-        authTag: string;
-        ciphertext: string;
-    };
+    hybridEncrypt(plaintext: string, publicKeyPem: string): HybridEncryptResult;
     hybridDecrypt(
         encryptedAesKey: string,
         iv: string,

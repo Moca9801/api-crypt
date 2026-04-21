@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CryptoApplicationService } from '../../../core/application/services/crypto-application.service';
 import { CryptServiceError, KeyGenOptions, SealedBlob, SignAlg } from '../../../libs/services/crypt.service';
+import { ManagedUseCases } from '../../../core/application/use-cases/managed/managed-use-cases';
 
 type KeyGenReqBody = {
     type?: string;
@@ -12,6 +13,7 @@ type KeyGenReqBody = {
 export class CryptoController {
     constructor(
         private readonly app: CryptoApplicationService,
+        private readonly managedUseCases: ManagedUseCases,
         private readonly legacyRoutesDisabled: boolean
     ) {}
 
@@ -58,7 +60,7 @@ export class CryptoController {
             if (!body || (body.type !== 'rsa' && body.type !== 'ec')) {
                 return res.status(400).json({ ok: false, error: 'body.type must be "rsa" or "ec"' });
             }
-            const result = this.app.createManagedKey({
+            const result = this.managedUseCases.createManagedKey.execute({
                 keyId: typeof body.keyId === 'string' ? body.keyId : undefined,
                 type: body.type,
                 passphrase: typeof body.passphrase === 'string' ? body.passphrase : undefined,
@@ -73,7 +75,7 @@ export class CryptoController {
 
     listManagedKeys = (_req: Request, res: Response) => {
         try {
-            return res.json({ ok: true, keys: this.app.listManagedKeys() });
+            return res.json({ ok: true, keys: this.managedUseCases.listManagedKeys.execute() });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -81,7 +83,7 @@ export class CryptoController {
 
     getManagedPublicKey = (req: Request, res: Response) => {
         try {
-            return res.json({ ok: true, ...this.app.getManagedPublicKey(req.params.keyId) });
+            return res.json({ ok: true, ...this.managedUseCases.getManagedPublicKey.execute(req.params.keyId) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -92,7 +94,7 @@ export class CryptoController {
             const body = req.body as Partial<KeyGenReqBody>;
             return res.json({
                 ok: true,
-                ...this.app.rotateManagedKey(req.params.keyId, {
+                ...this.managedUseCases.rotateManagedKey.execute(req.params.keyId, {
                     passphrase: typeof body.passphrase === 'string' ? body.passphrase : undefined,
                     modulusLength: body.modulusLength,
                     namedCurve: body.namedCurve,
@@ -105,7 +107,7 @@ export class CryptoController {
 
     disableManagedKey = (req: Request, res: Response) => {
         try {
-            return res.json({ ok: true, metadata: this.app.disableManagedKey(req.params.keyId) });
+            return res.json({ ok: true, metadata: this.managedUseCases.disableManagedKey.execute(req.params.keyId) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -117,7 +119,7 @@ export class CryptoController {
             if (typeof keyId !== 'string' || typeof plaintext !== 'string') {
                 return res.status(400).json({ ok: false, error: 'keyId and plaintext are required' });
             }
-            return res.json({ ok: true, ...this.app.managedHybridEncrypt(keyId, plaintext) });
+            return res.json({ ok: true, ...this.managedUseCases.managedHybridEncrypt.execute(keyId, plaintext) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -144,7 +146,7 @@ export class CryptoController {
                     error: 'keyId, encryptedAesKey, iv, authTag, ciphertext are required',
                 });
             }
-            const plaintext = this.app.managedHybridDecrypt(body.keyId, {
+            const plaintext = this.managedUseCases.managedHybridDecrypt.execute(body.keyId, {
                 encryptedAesKey: body.encryptedAesKey,
                 iv: body.iv,
                 authTag: body.authTag,
@@ -163,7 +165,7 @@ export class CryptoController {
                 return res.status(400).json({ ok: false, error: 'keyId and dataBase64 are required' });
             }
             const alg: SignAlg = algorithm === 'ECDSA-SHA256' ? 'ECDSA-SHA256' : 'RSA-SHA256';
-            return res.json({ ok: true, signatureBase64: this.app.managedSignData(keyId, dataBase64, alg) });
+            return res.json({ ok: true, signatureBase64: this.managedUseCases.managedSignData.execute(keyId, dataBase64, alg) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -181,7 +183,10 @@ export class CryptoController {
                 return res.status(400).json({ ok: false, error: 'keyId, dataBase64, signatureBase64 are required' });
             }
             const alg: SignAlg = algorithm === 'ECDSA-SHA256' ? 'ECDSA-SHA256' : 'RSA-SHA256';
-            return res.json({ ok: true, valid: this.app.managedVerifySignature(keyId, dataBase64, signatureBase64, alg) });
+            return res.json({
+                ok: true,
+                valid: this.managedUseCases.managedVerifySignature.execute(keyId, dataBase64, signatureBase64, alg),
+            });
         } catch (err) {
             return this.sendError(res, err);
         }
