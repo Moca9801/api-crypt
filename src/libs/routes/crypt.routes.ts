@@ -47,6 +47,9 @@ type KeyGenReqBody = {
 const router = Router();
 router.use(requireApiKey);
 router.use(cryptoRateLimit);
+const legacyRoutesDisabled =
+    (process.env.DISABLE_LEGACY_CRYPTO_ROUTES ?? (process.env.NODE_ENV === 'production' ? 'true' : 'false')) ===
+    'true';
 
 function sendError(res: Response, err: unknown) {
     if (err instanceof CryptServiceError) {
@@ -54,6 +57,17 @@ function sendError(res: Response, err: unknown) {
     }
     console.error(err);
     return res.status(500).json({ ok: false, error: 'Internal server error' });
+}
+
+function blockLegacyRoute(_req: Request, res: Response, next: () => void) {
+    if (!legacyRoutesDisabled) {
+        return next();
+    }
+    return res.status(403).json({
+        ok: false,
+        error: 'This legacy crypto route is disabled. Use managed keyId routes instead.',
+        code: 'LEGACY_ROUTE_DISABLED',
+    });
 }
 
 function getKeyGenOptions(body: KeyGenReqBody): KeyGenOptions {
@@ -214,7 +228,7 @@ router.post('/managed/sign/verify', (req: Request, res: Response) => {
 });
 
 /** POST /keys/generate */
-router.post('/keys/generate', (req: Request, res: Response) => {
+router.post('/keys/generate', blockLegacyRoute, (req: Request, res: Response) => {
     try {
         const body = req.body as KeyGenReqBody;
         if (!body || (body.type !== 'rsa' && body.type !== 'ec')) {
@@ -227,7 +241,7 @@ router.post('/keys/generate', (req: Request, res: Response) => {
 });
 
 /** POST /keys/fingerprint */
-router.post('/keys/fingerprint', (req: Request, res: Response) => {
+router.post('/keys/fingerprint', blockLegacyRoute, (req: Request, res: Response) => {
     try {
         const { publicKeyPem } = req.body as { publicKeyPem?: string };
         if (!publicKeyPem || typeof publicKeyPem !== 'string') {
@@ -240,7 +254,7 @@ router.post('/keys/fingerprint', (req: Request, res: Response) => {
 });
 
 /** POST /hybrid/encrypt */
-router.post('/hybrid/encrypt', (req: Request, res: Response) => {
+router.post('/hybrid/encrypt', blockLegacyRoute, (req: Request, res: Response) => {
     try {
         const { plaintext, publicKeyPem } = req.body as { plaintext?: string; publicKeyPem?: string };
         if (typeof plaintext !== 'string' || typeof publicKeyPem !== 'string') {
@@ -253,7 +267,7 @@ router.post('/hybrid/encrypt', (req: Request, res: Response) => {
 });
 
 /** POST /hybrid/decrypt */
-router.post('/hybrid/decrypt', (req: Request, res: Response) => {
+router.post('/hybrid/decrypt', blockLegacyRoute, (req: Request, res: Response) => {
     try {
         const b = req.body as {
             encryptedAesKey?: string;
@@ -486,7 +500,7 @@ router.get('/random/uuid', (_req: Request, res: Response) => {
 });
 
 /** POST /sign/data */
-router.post('/sign/data', (req: Request, res: Response) => {
+router.post('/sign/data', blockLegacyRoute, (req: Request, res: Response) => {
     try {
         const { dataBase64, privateKeyPem, passphrase, algorithm } = req.body as {
             dataBase64?: string;
@@ -506,7 +520,7 @@ router.post('/sign/data', (req: Request, res: Response) => {
 });
 
 /** POST /sign/verify */
-router.post('/sign/verify', (req: Request, res: Response) => {
+router.post('/sign/verify', blockLegacyRoute, (req: Request, res: Response) => {
     try {
         const { dataBase64, signatureBase64, publicKeyPem, algorithm } = req.body as {
             dataBase64?: string;
