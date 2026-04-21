@@ -17,6 +17,8 @@
     { "key": "managedAuthTag", "value": "" },
     { "key": "managedCiphertext", "value": "" },
     { "key": "managedSignature", "value": "" },
+    { "key": "managedRotatedAt", "value": "" },
+    { "key": "managedDisabledAt", "value": "" },
     { "key": "legacyPublicKey", "value": "" },
     { "key": "legacyPrivateKey", "value": "" },
     { "key": "legacyEncryptedAesKey", "value": "" },
@@ -122,6 +124,40 @@
               "raw": "{{baseUrl}}/api/v1/crypto/keys/managed/{{managedKeyId}}/public",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "crypto", "keys", "managed", "{{managedKeyId}}", "public"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/keys/managed/:keyId/rotate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('managedPublicKey', json.publicKey);",
+                  "pm.collectionVariables.set('managedRotatedAt', json.metadata.rotatedAt || '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modulusLength\": 2048\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/keys/managed/{{managedKeyId}}/rotate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "keys", "managed", "{{managedKeyId}}", "rotate"]
             }
           }
         },
@@ -242,6 +278,67 @@
               "raw": "{{baseUrl}}/api/v1/crypto/managed/sign/verify",
               "host": ["{{baseUrl}}"],
               "path": ["api", "v1", "crypto", "managed", "sign", "verify"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/keys/managed/:keyId/disable",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('managedDisabledAt', json.metadata.rotatedAt || '');",
+                  "pm.expect(json.metadata.status).to.eql('disabled');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/keys/managed/{{managedKeyId}}/disable",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "keys", "managed", "{{managedKeyId}}", "disable"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/managed/hybrid/encrypt (disabled key expected fail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400 when key disabled', function () { pm.response.to.have.status(400); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(false);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyId\": \"{{managedKeyId}}\",\n  \"plaintext\": \"{{samplePlaintext}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/managed/hybrid/encrypt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "managed", "hybrid", "encrypt"]
             }
           }
         }
