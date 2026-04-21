@@ -1,0 +1,499 @@
+{
+  "info": {
+    "_postman_id": "d2f7ca4f-58f8-4a4f-a42f-2b7f7e2a9c4e",
+    "name": "api-crypt",
+    "description": "Postman collection for api-crypt prototype with managed-key and legacy crypto flows.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "apiKey", "value": "dev-api-key" },
+    { "key": "samplePlaintext", "value": "hello from moca" },
+    { "key": "sampleDataBase64", "value": "aGVsbG8gZnJvbSBtb2Nh" },
+    { "key": "managedKeyId", "value": "" },
+    { "key": "managedPublicKey", "value": "" },
+    { "key": "managedEncryptedAesKey", "value": "" },
+    { "key": "managedIv", "value": "" },
+    { "key": "managedAuthTag", "value": "" },
+    { "key": "managedCiphertext", "value": "" },
+    { "key": "managedSignature", "value": "" },
+    { "key": "legacyPublicKey", "value": "" },
+    { "key": "legacyPrivateKey", "value": "" },
+    { "key": "legacyEncryptedAesKey", "value": "" },
+    { "key": "legacyIv", "value": "" },
+    { "key": "legacyAuthTag", "value": "" },
+    { "key": "legacyCiphertext", "value": "" },
+    { "key": "symmetricKey", "value": "" },
+    { "key": "symmetricIv", "value": "" },
+    { "key": "symmetricAuthTag", "value": "" },
+    { "key": "symmetricCiphertext", "value": "" },
+    { "key": "sealedBlob", "value": "" },
+    { "key": "signedToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "GET /api/v1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/docs/openapi.json",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/docs/openapi.json",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "docs", "openapi.json"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Managed Keys Flow",
+      "item": [
+        {
+          "name": "POST /crypto/keys/managed/create (RSA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('managedKeyId', json.keyId);",
+                  "pm.collectionVariables.set('managedPublicKey', json.publicKey);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"rsa\",\n  \"modulusLength\": 2048\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/keys/managed/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "keys", "managed", "create"]
+            }
+          }
+        },
+        {
+          "name": "GET /crypto/keys/managed",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/keys/managed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "keys", "managed"]
+            }
+          }
+        },
+        {
+          "name": "GET /crypto/keys/managed/:keyId/public",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/keys/managed/{{managedKeyId}}/public",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "keys", "managed", "{{managedKeyId}}", "public"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/managed/hybrid/encrypt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('managedEncryptedAesKey', json.encryptedAesKey);",
+                  "pm.collectionVariables.set('managedIv', json.iv);",
+                  "pm.collectionVariables.set('managedAuthTag', json.authTag);",
+                  "pm.collectionVariables.set('managedCiphertext', json.ciphertext);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyId\": \"{{managedKeyId}}\",\n  \"plaintext\": \"{{samplePlaintext}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/managed/hybrid/encrypt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "managed", "hybrid", "encrypt"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/managed/hybrid/decrypt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.expect(json.plaintext).to.eql(pm.collectionVariables.get('samplePlaintext'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyId\": \"{{managedKeyId}}\",\n  \"encryptedAesKey\": \"{{managedEncryptedAesKey}}\",\n  \"iv\": \"{{managedIv}}\",\n  \"authTag\": \"{{managedAuthTag}}\",\n  \"ciphertext\": \"{{managedCiphertext}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/managed/hybrid/decrypt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "managed", "hybrid", "decrypt"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/managed/sign/data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('managedSignature', json.signatureBase64);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyId\": \"{{managedKeyId}}\",\n  \"dataBase64\": \"{{sampleDataBase64}}\",\n  \"algorithm\": \"RSA-SHA256\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/managed/sign/data",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "managed", "sign", "data"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/managed/sign/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyId\": \"{{managedKeyId}}\",\n  \"dataBase64\": \"{{sampleDataBase64}}\",\n  \"signatureBase64\": \"{{managedSignature}}\",\n  \"algorithm\": \"RSA-SHA256\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/managed/sign/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "managed", "sign", "verify"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Legacy Compatibility",
+      "item": [
+        {
+          "name": "POST /crypto/keys/generate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('legacyPublicKey', json.publicKey);",
+                  "pm.collectionVariables.set('legacyPrivateKey', json.privateKey);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"rsa\",\n  \"modulusLength\": 2048\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/keys/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "keys", "generate"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/hybrid/encrypt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('legacyEncryptedAesKey', json.encryptedAesKey);",
+                  "pm.collectionVariables.set('legacyIv', json.iv);",
+                  "pm.collectionVariables.set('legacyAuthTag', json.authTag);",
+                  "pm.collectionVariables.set('legacyCiphertext', json.ciphertext);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plaintext\": \"{{samplePlaintext}}\",\n  \"publicKeyPem\": \"{{legacyPublicKey}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/hybrid/encrypt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "hybrid", "encrypt"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/hybrid/decrypt",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"encryptedAesKey\": \"{{legacyEncryptedAesKey}}\",\n  \"iv\": \"{{legacyIv}}\",\n  \"authTag\": \"{{legacyAuthTag}}\",\n  \"ciphertext\": \"{{legacyCiphertext}}\",\n  \"privateKeyPem\": \"{{legacyPrivateKey}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/hybrid/decrypt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "hybrid", "decrypt"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/symmetric/encrypt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('symmetricKey', json.key);",
+                  "pm.collectionVariables.set('symmetricIv', json.iv);",
+                  "pm.collectionVariables.set('symmetricAuthTag', json.authTag);",
+                  "pm.collectionVariables.set('symmetricCiphertext', json.ciphertext);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plaintext\": \"{{samplePlaintext}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/symmetric/encrypt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "symmetric", "encrypt"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/symmetric/decrypt",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"iv\": \"{{symmetricIv}}\",\n  \"authTag\": \"{{symmetricAuthTag}}\",\n  \"ciphertext\": \"{{symmetricCiphertext}}\",\n  \"key\": \"{{symmetricKey}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/symmetric/decrypt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "symmetric", "decrypt"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/sealed/create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('sealedBlob', JSON.stringify(json.sealed));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": { \"session\": \"abc123\", \"role\": \"tester\" },\n  \"secret\": \"temporary-secret\",\n  \"ttlSeconds\": 600\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/sealed/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "sealed", "create"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/sealed/open",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sealed\": {{sealedBlob}},\n  \"secret\": \"temporary-secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/sealed/open",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "sealed", "open"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/tokens/signed/create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.expect(json.ok).to.eql(true);",
+                  "pm.collectionVariables.set('signedToken', json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payload\": { \"sub\": \"user-1\", \"scope\": \"demo\" },\n  \"secret\": \"my-token-secret\",\n  \"expiresInSeconds\": 600\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/tokens/signed/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "tokens", "signed", "create"]
+            }
+          }
+        },
+        {
+          "name": "POST /crypto/tokens/signed/verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-api-key", "value": "{{apiKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{signedToken}}\",\n  \"secret\": \"my-token-secret\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/crypto/tokens/signed/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "crypto", "tokens", "signed", "verify"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
