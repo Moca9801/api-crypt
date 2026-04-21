@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CryptoApplicationService } from '../../../core/application/services/crypto-application.service';
+import { CryptoProviderPort } from '../../../core/application/ports/crypto-provider.port';
 import { CryptServiceError, KeyGenOptions, SealedBlob, SignAlg } from '../../../libs/services/crypt.service';
 import { ManagedUseCases } from '../../../core/application/use-cases/managed/managed-use-cases';
 
@@ -12,10 +12,12 @@ type KeyGenReqBody = {
 
 export class CryptoController {
     constructor(
-        private readonly app: CryptoApplicationService,
+        private readonly cryptoProvider: CryptoProviderPort,
         private readonly managedUseCases: ManagedUseCases,
         private readonly legacyRoutesDisabled: boolean
     ) {}
+
+    // ── Shared helpers ────────────────────────────────────────────────────────
 
     private sendError(res: Response, err: unknown) {
         if (err instanceof CryptServiceError) {
@@ -26,9 +28,7 @@ export class CryptoController {
     }
 
     private blockLegacyRoute(res: Response): boolean {
-        if (!this.legacyRoutesDisabled) {
-            return false;
-        }
+        if (!this.legacyRoutesDisabled) return false;
         res.status(403).json({
             ok: false,
             error: 'This legacy crypto route is disabled. Use managed keyId routes instead.',
@@ -48,11 +48,12 @@ export class CryptoController {
         }
         return {
             type: 'ec',
-            namedCurve:
-                body.namedCurve === 'secp384r1' || body.namedCurve === 'prime256v1' ? body.namedCurve : 'prime256v1',
+            namedCurve: body.namedCurve === 'secp384r1' || body.namedCurve === 'prime256v1' ? body.namedCurve : 'prime256v1',
             passphrase,
         };
     }
+
+    // ── Managed key lifecycle ────────────────────────────────────────────────
 
     createManagedKey = (req: Request, res: Response) => {
         try {
@@ -113,6 +114,8 @@ export class CryptoController {
         }
     };
 
+    // ── Managed crypto operations ────────────────────────────────────────────
+
     managedHybridEncrypt = (req: Request, res: Response) => {
         try {
             const { keyId, plaintext } = req.body as { keyId?: string; plaintext?: string };
@@ -133,6 +136,7 @@ export class CryptoController {
                 iv?: string;
                 authTag?: string;
                 ciphertext?: string;
+                passphrase?: string;
             };
             if (
                 typeof body.keyId !== 'string' ||
@@ -146,12 +150,16 @@ export class CryptoController {
                     error: 'keyId, encryptedAesKey, iv, authTag, ciphertext are required',
                 });
             }
-            const plaintext = this.managedUseCases.managedHybridDecrypt.execute(body.keyId, {
-                encryptedAesKey: body.encryptedAesKey,
-                iv: body.iv,
-                authTag: body.authTag,
-                ciphertext: body.ciphertext,
-            });
+            const plaintext = this.managedUseCases.managedHybridDecrypt.execute(
+                body.keyId,
+                {
+                    encryptedAesKey: body.encryptedAesKey,
+                    iv: body.iv,
+                    authTag: body.authTag,
+                    ciphertext: body.ciphertext,
+                },
+                typeof body.passphrase === 'string' ? body.passphrase : undefined
+            );
             return res.json({ ok: true, plaintext });
         } catch (err) {
             return this.sendError(res, err);
@@ -160,12 +168,25 @@ export class CryptoController {
 
     managedSignData = (req: Request, res: Response) => {
         try {
-            const { keyId, dataBase64, algorithm } = req.body as { keyId?: string; dataBase64?: string; algorithm?: string };
+            const { keyId, dataBase64, algorithm, passphrase } = req.body as {
+                keyId?: string;
+                dataBase64?: string;
+                algorithm?: string;
+                passphrase?: string;
+            };
             if (typeof keyId !== 'string' || typeof dataBase64 !== 'string') {
                 return res.status(400).json({ ok: false, error: 'keyId and dataBase64 are required' });
             }
             const alg: SignAlg = algorithm === 'ECDSA-SHA256' ? 'ECDSA-SHA256' : 'RSA-SHA256';
-            return res.json({ ok: true, signatureBase64: this.managedUseCases.managedSignData.execute(keyId, dataBase64, alg) });
+            return res.json({
+                ok: true,
+                signatureBase64: this.managedUseCases.managedSignData.execute(
+                    keyId,
+                    dataBase64,
+                    alg,
+                    typeof passphrase === 'string' ? passphrase : undefined
+                ),
+            });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -192,6 +213,8 @@ export class CryptoController {
         }
     };
 
+    // ── Legacy stateless routes (use CryptoProviderPort directly — no managed keys) ──
+
     keysGenerate = (req: Request, res: Response) => {
         if (this.blockLegacyRoute(res)) return;
         try {
@@ -199,7 +222,7 @@ export class CryptoController {
             if (!body || (body.type !== 'rsa' && body.type !== 'ec')) {
                 return res.status(400).json({ ok: false, error: 'body.type must be "rsa" or "ec"' });
             }
-            return res.json({ ok: true, ...this.app.generateLegacyKeyPair(this.getKeyGenOptions(body)) });
+            return res.json({ ok: true, ...this.cryptoProvider.generateKeyPair(this.getKeyGenOptions(body)) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -212,7 +235,7 @@ export class CryptoController {
             if (!publicKeyPem || typeof publicKeyPem !== 'string') {
                 return res.status(400).json({ ok: false, error: 'publicKeyPem is required' });
             }
-            return res.json({ ok: true, fingerprintSha256Hex: this.app.fingerprintPublicKey(publicKeyPem) });
+            return res.json({ ok: true, fingerprintSha256Hex: this.cryptoProvider.publicKeyFingerprint(publicKeyPem) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -225,7 +248,7 @@ export class CryptoController {
             if (typeof plaintext !== 'string' || typeof publicKeyPem !== 'string') {
                 return res.status(400).json({ ok: false, error: 'plaintext and publicKeyPem (RSA PEM) are required' });
             }
-            return res.json({ ok: true, ...this.app.hybridEncrypt(plaintext, publicKeyPem) });
+            return res.json({ ok: true, ...this.cryptoProvider.hybridEncrypt(plaintext, publicKeyPem) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -256,13 +279,8 @@ export class CryptoController {
             }
             return res.json({
                 ok: true,
-                plaintext: this.app.hybridDecrypt(
-                    b.encryptedAesKey,
-                    b.iv,
-                    b.authTag,
-                    b.ciphertext,
-                    b.privateKeyPem,
-                    b.passphrase
+                plaintext: this.cryptoProvider.hybridDecrypt(
+                    b.encryptedAesKey, b.iv, b.authTag, b.ciphertext, b.privateKeyPem, b.passphrase
                 ),
             });
         } catch (err) {
@@ -276,7 +294,7 @@ export class CryptoController {
             if (typeof plaintext !== 'string') {
                 return res.status(400).json({ ok: false, error: 'plaintext is required' });
             }
-            return res.json({ ok: true, ...this.app.symmetricEncrypt(plaintext, typeof key === 'string' ? key : undefined) });
+            return res.json({ ok: true, ...this.cryptoProvider.symmetricEncrypt(plaintext, typeof key === 'string' ? key : undefined) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -288,7 +306,7 @@ export class CryptoController {
             if (typeof iv !== 'string' || typeof authTag !== 'string' || typeof ciphertext !== 'string' || typeof key !== 'string') {
                 return res.status(400).json({ ok: false, error: 'iv, authTag, ciphertext, key (base64) are required' });
             }
-            return res.json({ ok: true, plaintext: this.app.symmetricDecrypt(iv, authTag, ciphertext, key) });
+            return res.json({ ok: true, plaintext: this.cryptoProvider.symmetricDecrypt(iv, authTag, ciphertext, key) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -302,7 +320,7 @@ export class CryptoController {
             }
             return res.json({
                 ok: true,
-                ...this.app.pbkdf2Derive(
+                ...this.cryptoProvider.pbkdf2Derive(
                     password,
                     typeof salt === 'string' ? salt : undefined,
                     typeof iterations === 'number' && iterations > 0 ? iterations : undefined
@@ -319,7 +337,7 @@ export class CryptoController {
             if (typeof data !== 'string') {
                 return res.status(400).json({ ok: false, error: 'data is required' });
             }
-            return res.json({ ok: true, hex: this.app.sha256Digest(data, inputEncoding === 'base64' ? 'base64' : 'utf8') });
+            return res.json({ ok: true, hex: this.cryptoProvider.sha256Digest(data, inputEncoding === 'base64' ? 'base64' : 'utf8') });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -328,10 +346,7 @@ export class CryptoController {
     hashCombine = (req: Request, res: Response) => {
         try {
             const { hashA, hashB, mode, hmacSecret } = req.body as {
-                hashA?: string;
-                hashB?: string;
-                mode?: string;
-                hmacSecret?: string;
+                hashA?: string; hashB?: string; mode?: string; hmacSecret?: string;
             };
             if (typeof hashA !== 'string' || typeof hashB !== 'string') {
                 return res.status(400).json({ ok: false, error: 'hashA and hashB (64-char hex SHA-256) are required' });
@@ -341,7 +356,7 @@ export class CryptoController {
             }
             return res.json({
                 ok: true,
-                ...this.app.combineHashes(hashA, hashB, mode, typeof hmacSecret === 'string' ? hmacSecret : undefined),
+                ...this.cryptoProvider.combineHashes(hashA, hashB, mode, typeof hmacSecret === 'string' ? hmacSecret : undefined),
             });
         } catch (err) {
             return this.sendError(res, err);
@@ -354,7 +369,7 @@ export class CryptoController {
             if (typeof data !== 'string' || typeof secret !== 'string') {
                 return res.status(400).json({ ok: false, error: 'data and secret (base64) are required' });
             }
-            return res.json({ ok: true, signatureHex: this.app.hmacSign(data, secret) });
+            return res.json({ ok: true, signatureHex: this.cryptoProvider.hmacSign(data, secret) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -366,7 +381,7 @@ export class CryptoController {
             if (typeof data !== 'string' || typeof secret !== 'string' || typeof signatureHex !== 'string') {
                 return res.status(400).json({ ok: false, error: 'data, secret, signatureHex are required' });
             }
-            return res.json({ ok: true, valid: this.app.hmacVerify(data, signatureHex, secret) });
+            return res.json({ ok: true, valid: this.cryptoProvider.hmacVerify(data, signatureHex, secret) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -375,16 +390,14 @@ export class CryptoController {
     tokenCreate = (req: Request, res: Response) => {
         try {
             const { payload, secret, expiresInSeconds } = req.body as {
-                payload?: Record<string, unknown>;
-                secret?: string;
-                expiresInSeconds?: number;
+                payload?: Record<string, unknown>; secret?: string; expiresInSeconds?: number;
             };
             if (!payload || typeof payload !== 'object' || typeof secret !== 'string') {
                 return res.status(400).json({ ok: false, error: 'payload (object) and secret (string) are required' });
             }
             return res.json({
                 ok: true,
-                token: this.app.createSignedToken(
+                token: this.cryptoProvider.createSignedToken(
                     payload,
                     secret,
                     typeof expiresInSeconds === 'number' && expiresInSeconds > 0 ? expiresInSeconds : undefined
@@ -401,7 +414,7 @@ export class CryptoController {
             if (typeof token !== 'string' || typeof secret !== 'string') {
                 return res.status(400).json({ ok: false, error: 'token and secret are required' });
             }
-            return res.json({ ok: true, payload: this.app.verifySignedToken(token, secret) });
+            return res.json({ ok: true, payload: this.cryptoProvider.verifySignedToken(token, secret) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -413,7 +426,7 @@ export class CryptoController {
             if (!data || typeof data !== 'object' || typeof secret !== 'string' || typeof ttlSeconds !== 'number') {
                 return res.status(400).json({ ok: false, error: 'data (object), secret (string), ttlSeconds (number) are required' });
             }
-            return res.json({ ok: true, sealed: this.app.sealPayload(data, secret, ttlSeconds) });
+            return res.json({ ok: true, sealed: this.cryptoProvider.sealPayload(data, secret, ttlSeconds) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -425,7 +438,7 @@ export class CryptoController {
             if (!sealed || typeof secret !== 'string') {
                 return res.status(400).json({ ok: false, error: 'sealed (object) and secret are required' });
             }
-            return res.json({ ok: true, data: this.app.unsealPayload(sealed, secret) });
+            return res.json({ ok: true, data: this.cryptoProvider.unsealPayload(sealed, secret) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -434,7 +447,7 @@ export class CryptoController {
     randomBytes = (req: Request, res: Response) => {
         try {
             const n = parseInt(String(req.query.length ?? '32'), 10);
-            const buf = this.app.getRandomBytes(Number.isFinite(n) ? n : 32);
+            const buf = this.cryptoProvider.getRandomBytes(Number.isFinite(n) ? n : 32);
             return res.json({ ok: true, base64: buf.toString('base64'), length: buf.length });
         } catch (err) {
             return this.sendError(res, err);
@@ -442,17 +455,14 @@ export class CryptoController {
     };
 
     randomUuid = (_req: Request, res: Response) => {
-        return res.json({ ok: true, uuid: this.app.getRandomUuid() });
+        return res.json({ ok: true, uuid: this.cryptoProvider.getRandomUuid() });
     };
 
     signData = (req: Request, res: Response) => {
         if (this.blockLegacyRoute(res)) return;
         try {
             const { dataBase64, privateKeyPem, passphrase, algorithm } = req.body as {
-                dataBase64?: string;
-                privateKeyPem?: string;
-                passphrase?: string;
-                algorithm?: string;
+                dataBase64?: string; privateKeyPem?: string; passphrase?: string; algorithm?: string;
             };
             if (typeof dataBase64 !== 'string' || typeof privateKeyPem !== 'string') {
                 return res.status(400).json({ ok: false, error: 'dataBase64 and privateKeyPem are required' });
@@ -460,7 +470,9 @@ export class CryptoController {
             const alg: SignAlg = algorithm === 'ECDSA-SHA256' ? 'ECDSA-SHA256' : 'RSA-SHA256';
             return res.json({
                 ok: true,
-                signatureBase64: this.app.signData(dataBase64, privateKeyPem, typeof passphrase === 'string' ? passphrase : undefined, alg),
+                signatureBase64: this.cryptoProvider.signData(
+                    dataBase64, privateKeyPem, typeof passphrase === 'string' ? passphrase : undefined, alg
+                ),
             });
         } catch (err) {
             return this.sendError(res, err);
@@ -471,16 +483,13 @@ export class CryptoController {
         if (this.blockLegacyRoute(res)) return;
         try {
             const { dataBase64, signatureBase64, publicKeyPem, algorithm } = req.body as {
-                dataBase64?: string;
-                signatureBase64?: string;
-                publicKeyPem?: string;
-                algorithm?: string;
+                dataBase64?: string; signatureBase64?: string; publicKeyPem?: string; algorithm?: string;
             };
             if (typeof dataBase64 !== 'string' || typeof signatureBase64 !== 'string' || typeof publicKeyPem !== 'string') {
                 return res.status(400).json({ ok: false, error: 'dataBase64, signatureBase64, publicKeyPem are required' });
             }
             const alg: SignAlg = algorithm === 'ECDSA-SHA256' ? 'ECDSA-SHA256' : 'RSA-SHA256';
-            return res.json({ ok: true, valid: this.app.verifySignature(dataBase64, signatureBase64, publicKeyPem, alg) });
+            return res.json({ ok: true, valid: this.cryptoProvider.verifySignature(dataBase64, signatureBase64, publicKeyPem, alg) });
         } catch (err) {
             return this.sendError(res, err);
         }
@@ -492,7 +501,7 @@ export class CryptoController {
             if (typeof aHex !== 'string' || typeof bHex !== 'string') {
                 return res.status(400).json({ ok: false, error: 'aHex and bHex are required' });
             }
-            return res.json({ ok: true, equal: this.app.timingSafeCompareHex(aHex, bHex) });
+            return res.json({ ok: true, equal: this.cryptoProvider.timingSafeCompareHex(aHex, bHex) });
         } catch (err) {
             return this.sendError(res, err);
         }

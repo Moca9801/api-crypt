@@ -31,8 +31,12 @@ export interface ManagedUseCases {
     disableManagedKey: { execute(keyId: string): ManagedKeyMetadata };
     managedHybridEncrypt: { execute(keyId: string, plaintext: string): ManagedHybridEncryptResult };
     managedHybridDecrypt: {
-        execute(keyId: string, payload: { encryptedAesKey: string; iv: string; authTag: string; ciphertext: string }): string;
+        execute(
+            keyId: string,
+            payload: { encryptedAesKey: string; iv: string; authTag: string; ciphertext: string },
+            passphrase?: string
+        ): string;
     };
-    managedSignData: { execute(keyId: string, dataBase64: string, algorithm: SignAlg): string };
+    managedSignData: { execute(keyId: string, dataBase64: string, algorithm: SignAlg, passphrase?: string): string };
     managedVerifySignature: { execute(keyId: string, dataBase64: string, signatureBase64: string, algorithm: SignAlg): boolean };
 }

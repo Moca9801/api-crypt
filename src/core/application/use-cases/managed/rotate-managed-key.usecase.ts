@@ -1,4 +1,5 @@
 import { CryptoProviderPort } from '../../ports/crypto-provider.port';
+import { KeyVaultPort } from '../../ports/key-vault.port';
 import { ManagedKeyRepositoryPort } from '../../ports/managed-key-repository.port';
 import { ManagedKey } from '../../../domain/managed-key';
 import { ManagedKeyDomainService } from '../../services/managed-key-domain.service';
@@ -7,7 +8,8 @@ export class RotateManagedKeyUseCase {
     constructor(
         private readonly cryptoProvider: CryptoProviderPort,
         private readonly managedKeyRepo: ManagedKeyRepositoryPort,
-        private readonly managedDomain: ManagedKeyDomainService
+        private readonly managedDomain: ManagedKeyDomainService,
+        private readonly keyVault: KeyVaultPort
     ) {}
 
     execute(
@@ -24,8 +26,9 @@ export class RotateManagedKeyUseCase {
             ...current,
             algorithm: generated.algorithm,
             publicKey: generated.publicKey,
-            privateKey: generated.privateKey,
-            passphrase: opts?.passphrase,
+            // Encrypt the new private key at rest — passphrase is NOT persisted
+            encryptedPrivateKey: this.keyVault.encrypt(generated.privateKey),
+            passphraseProtected: Boolean(opts?.passphrase),
             rotatedAt: new Date().toISOString(),
         };
         this.managedKeyRepo.save(updated);

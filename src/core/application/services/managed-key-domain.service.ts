@@ -3,6 +3,10 @@ import { ManagedKey, ManagedKeyMetadata } from '../../domain/managed-key';
 import { CryptoProviderPort } from '../ports/crypto-provider.port';
 import { ManagedKeyRepositoryPort } from '../ports/managed-key-repository.port';
 
+/**
+ * Domain service for managed key business rules.
+ * Shared across multiple use cases — keeps domain logic DRY.
+ */
 export class ManagedKeyDomainService {
     constructor(
         private readonly cryptoProvider: CryptoProviderPort,
@@ -15,7 +19,7 @@ export class ManagedKeyDomainService {
             type: key.type,
             algorithm: key.algorithm,
             status: key.status,
-            passphraseProtected: Boolean(key.passphrase),
+            passphraseProtected: key.passphraseProtected,
             createdAt: key.createdAt,
             rotatedAt: key.rotatedAt,
             fingerprintSha256Hex: this.cryptoProvider.publicKeyFingerprint(key.publicKey),
@@ -41,7 +45,10 @@ export class ManagedKeyDomainService {
     assertSignAlgorithm(key: ManagedKey, algorithm: SignAlg): void {
         const expected: SignAlg = key.type === 'rsa' ? 'RSA-SHA256' : 'ECDSA-SHA256';
         if (algorithm !== expected) {
-            throw new CryptServiceError(`Algorithm mismatch for key ${key.keyId}. Expected ${expected}.`, 'ALGORITHM_MISMATCH');
+            throw new CryptServiceError(
+                `Algorithm mismatch for key ${key.keyId}. Expected ${expected}.`,
+                'ALGORITHM_MISMATCH'
+            );
         }
     }
 }
