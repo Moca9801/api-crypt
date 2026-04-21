@@ -5,7 +5,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import v1Router from './libs/routes/index.routes';
 
-
 dotenv.config();
 
 export class App {
@@ -81,8 +80,8 @@ export class App {
     }
     
     private routes(){
-        this.app.get('/', (req: Request, res: Response) => {
-            res.send('¡La API está en funcionamiento!');
+        this.app.get('/', (_req: Request, res: Response) => {
+            res.send('¡La API está en funcionamiento! Ver /api/v1 para rutas.');
         });
     
         this.app.use('/api/v1', v1Router);
