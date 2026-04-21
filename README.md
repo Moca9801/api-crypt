@@ -20,6 +20,23 @@ Built with Node.js + Express + TypeScript.
 - OpenAPI JSON endpoint
 - Postman collection included
 
+## Architecture
+
+This project now follows a Clean Architecture-inspired structure:
+
+- `src/core/domain`: entities and domain models
+- `src/core/application`: use-case orchestration and ports (interfaces)
+- `src/infrastructure`: concrete adapters (Node crypto) and repositories
+- `src/interfaces/http`: transport-layer controllers
+- `src/libs/routes`: HTTP route mapping only (thin router)
+
+Patterns currently applied:
+
+- **Ports and Adapters (Hexagonal)** for crypto provider and key repository
+- **Repository Pattern** for managed keys
+- **Dependency Inversion** from application service to abstractions
+- **Controller pattern** with thin route handlers
+
 ## Quick start
 
 ```bash
