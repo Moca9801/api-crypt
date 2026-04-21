@@ -1,2 +1,2 @@
 # api-crypt
-APY crypt
+API crypt
