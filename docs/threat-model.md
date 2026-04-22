@@ -83,10 +83,7 @@
 
 | Prioridad | Control |
 |-----------|---------|
-| 🔴 Alta | TLS via reverse proxy obligatorio |
-| 🔴 Alta | Timing-safe comparison para API_KEY (I-5) |
-| 🟡 Media | Audit log persistente |
-| 🟡 Media | `helmet.js` para security headers |
+| 🟡 Media | Audit log persistente (Exportar logs a sistema de monitoreo externo) |
 
 ---
 
