@@ -58,9 +58,6 @@ export class ManagedKeysController {
         } catch (err) { return this.sendError(res, err); }
     };
 
-    deleteRotationPolicy = (_req: Request, res: Response) => {
-        return res.status(501).json({ ok: false, error: 'DELETE policy not yet implemented. Set a new policy to override.' });
-    };
 
     checkPendingRotations = async (req: Request, res: Response) => {
         try {

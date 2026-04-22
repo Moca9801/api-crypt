@@ -5,10 +5,7 @@ import { metricsRegistry } from '../../infrastructure/metrics/metrics-registry';
 
 const v1Router = express.Router();
 
-// ── Health Check ──────────────────────────────────────────────────────────────
-v1Router.get('/health', (_req, res) => {
-    res.status(200).json({ status: 'pass', timestamp: new Date().toISOString() });
-});
+
 
 v1Router.get('/', (_req, res) => {
     res.json({
@@ -20,12 +17,16 @@ v1Router.get('/', (_req, res) => {
             note: 'Set API_KEY in .env. Default (development only): dev-api-key',
         },
         endpoints: [
+            'GET  /api/v1/health',
+            'GET  /api/v1/metrics',
             'GET  /api/v1/docs/openapi.json',
             'POST /api/v1/crypto/keys/managed/create',
             'GET  /api/v1/crypto/keys/managed',
             'GET  /api/v1/crypto/keys/managed/:keyId/public',
             'POST /api/v1/crypto/keys/managed/:keyId/rotate',
             'POST /api/v1/crypto/keys/managed/:keyId/disable',
+            'POST /api/v1/crypto/keys/managed/:keyId/policy',
+            'GET  /api/v1/crypto/keys/managed/rotation/pending',
             'POST /api/v1/crypto/managed/hybrid/encrypt',
             'POST /api/v1/crypto/managed/hybrid/decrypt',
             'POST /api/v1/crypto/managed/sign/data',

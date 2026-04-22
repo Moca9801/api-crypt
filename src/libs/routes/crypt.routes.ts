@@ -29,7 +29,7 @@ router.post('/keys/managed/:keyId/disable', controllers.managedKeys.disableManag
 
 // ── Rotation policy ────────────────────────────────────────────────────────────
 router.post('/keys/managed/:keyId/policy', validate(SetRotationPolicySchema), controllers.managedKeys.setRotationPolicy);
-router.delete('/keys/managed/:keyId/policy', controllers.managedKeys.deleteRotationPolicy);
+
 router.get('/keys/managed/rotation/pending', controllers.managedKeys.checkPendingRotations);
 
 // ── Managed crypto operations ─────────────────────────────────────────────────

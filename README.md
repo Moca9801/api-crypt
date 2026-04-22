@@ -5,8 +5,8 @@ Built with Node.js + Express + TypeScript.
 
 ## Project status
 
-- **Status:** production-ready (V1.1)
-- **Use case:** enterprise cryptographic microservice
+- **Status:** production-ready for single-instance deployments (V1.1)
+- **Use case:** lightweight cryptographic microservice
 - **Important:** features fail-closed security, Zod validation, and AES-256-GCM encryption at rest
 
 ## Features

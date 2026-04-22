@@ -41,6 +41,22 @@ export function getOpenApiDocument() {
                     responses: { '200': { description: 'OpenAPI schema' } },
                 },
             },
+            '/api/v1/health': {
+                get: {
+                    tags: ['Utility'],
+                    summary: 'Service health check',
+                    security: [],
+                    responses: { '200': { description: 'Health check response' } },
+                },
+            },
+            '/api/v1/metrics': {
+                get: {
+                    tags: ['Utility'],
+                    summary: 'Prometheus metrics',
+                    security: [],
+                    responses: { '200': { description: 'Prometheus metrics text' } },
+                },
+            },
             '/api/v1/crypto/keys/managed/create': {
                 post: {
                     tags: ['Managed Keys'],
@@ -77,6 +93,22 @@ export function getOpenApiDocument() {
                     summary: 'Disable a managed key',
                     parameters: [{ name: 'keyId', in: 'path', required: true, schema: { type: 'string' } }],
                     responses: { '200': { description: 'Managed key disabled' } },
+                },
+            },
+            '/api/v1/crypto/keys/managed/{keyId}/policy': {
+                post: {
+                    tags: ['Managed Keys'],
+                    summary: 'Set rotation policy for a key',
+                    parameters: [{ name: 'keyId', in: 'path', required: true, schema: { type: 'string' } }],
+                    responses: { '200': { description: 'Rotation policy set' } },
+                },
+            },
+            '/api/v1/crypto/keys/managed/rotation/pending': {
+                get: {
+                    tags: ['Managed Keys'],
+                    summary: 'List keys due for rotation',
+                    parameters: [{ name: 'warningDays', in: 'query', schema: { type: 'integer' } }],
+                    responses: { '200': { description: 'Pending rotations list' } },
                 },
             },
             '/api/v1/crypto/managed/hybrid/encrypt': {
