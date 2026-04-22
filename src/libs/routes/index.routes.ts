@@ -1,6 +1,7 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cryptRoutes from './crypt.routes';
 import { getOpenApiDocument } from '../docs/openapi';
+import { metricsRegistry } from '../../infrastructure/metrics/metrics-registry';
 
 const v1Router = express.Router();
 
@@ -50,6 +51,23 @@ v1Router.get('/', (_req, res) => {
 
 v1Router.get('/docs/openapi.json', (_req, res) => {
     res.json(getOpenApiDocument());
+});
+
+// ── /metrics — Prometheus scrape endpoint ─────────────────────────────────────
+// No requiere API key, pero solo accesible desde IPs permitidas.
+const METRICS_ALLOWED = (process.env.METRICS_ALLOWED_IPS ?? '127.0.0.1,::1')
+    .split(',').map((ip) => ip.trim()).filter(Boolean);
+
+v1Router.get('/metrics', (req: Request, res: Response) => {
+    const clientIp = req.ip ?? req.socket.remoteAddress ?? '';
+    const allowed = METRICS_ALLOWED.some((allowed) =>
+        clientIp === allowed || clientIp.endsWith(allowed) || allowed === '0.0.0.0'
+    );
+    if (!allowed) {
+        return res.status(403).json({ ok: false, error: 'Metrics endpoint access denied.' });
+    }
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    return res.send(metricsRegistry.toPrometheusText());
 });
 
 v1Router.use('/crypto', cryptRoutes);

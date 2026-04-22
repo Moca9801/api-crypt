@@ -1,11 +1,15 @@
 import { Request, Response } from 'express';
 import express, { Application } from 'express';
+import http from 'http';
 import morgan from 'morgan';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import v1Router from './libs/routes/index.routes';
+import { metricsMiddleware } from './libs/middlewares/metrics.middleware';
 
 dotenv.config();
+
+const START_TIME = Date.now();
 
 function getAllowedOrigins(): string[] {
     const raw = process.env.ALLOWED_ORIGINS?.trim();
@@ -13,10 +17,9 @@ function getAllowedOrigins(): string[] {
         if (process.env.NODE_ENV === 'production') {
             throw new Error(
                 '[api-crypt] FATAL: ALLOWED_ORIGINS must be set in production.\n' +
-                'Example: ALLOWED_ORIGINS=https://yourapp.com,https://admin.yourapp.com'
+                'Example: ALLOWED_ORIGINS=https://myapp.com,https://admin.myapp.com'
             );
         }
-        // Development: allow common localhost ports only
         return [
             'http://localhost:3000',
             'http://localhost:5173',
@@ -62,37 +65,45 @@ export class App {
                 ],
             })
         );
+        // Instrumentación de métricas — después de CORS, antes de rutas
+        this.app.use(metricsMiddleware);
     }
 
     private getNextPort() {
         const currentPort = this.app.get('port');
-        const nextPort = typeof currentPort === 'string' ? parseInt(currentPort, 10) + 1 : currentPort + 1;
-        return nextPort;
+        return typeof currentPort === 'string' ? parseInt(currentPort, 10) + 1 : currentPort + 1;
     }
 
-    public async listen() {
-        return new Promise<void>((resolve, reject) => {
-            const server = this.app
-                .listen(this.app.get('port'), () => {
-                    console.log(
-                        `** 🚀 api-crypt listening on localhost:${this.app.get('port')} **`
-                    );
-                    resolve();
-                })
-                .on('error', (err: NodeJS.ErrnoException) => {
-                    if (err && err.code === 'EADDRINUSE') {
-                        console.log(`Port ${this.app.get('port')} in use. Trying next port...`);
-                        this.app.set('port', this.getNextPort());
-                        server.close();
-                        this.listen().then(resolve).catch(reject);
-                    } else {
-                        reject(err);
-                    }
-                });
+    public async listen(): Promise<http.Server> {
+        return new Promise<http.Server>((resolve, reject) => {
+            const server = http.createServer(this.app);
+            server.listen(this.app.get('port'), () => {
+                console.log(`** 🚀 api-crypt listening on localhost:${this.app.get('port')} **`);
+                resolve(server);
+            }).on('error', (err: NodeJS.ErrnoException) => {
+                if (err.code === 'EADDRINUSE') {
+                    console.log(`Port ${this.app.get('port')} in use. Trying next port...`);
+                    this.app.set('port', this.getNextPort());
+                    server.close();
+                    this.listen().then(resolve).catch(reject);
+                } else {
+                    reject(err);
+                }
+            });
         });
     }
 
     private routes() {
+        // ── Health check — sin autenticación, para Docker / load balancers ──────
+        this.app.get('/api/v1/health', (_req: Request, res: Response) => {
+            res.json({
+                status: 'ok',
+                version: process.env.npm_package_version ?? '1.0.0',
+                uptimeSeconds: Math.floor((Date.now() - START_TIME) / 1000),
+                environment: process.env.NODE_ENV ?? 'development',
+            });
+        });
+
         this.app.get('/', (_req: Request, res: Response) => {
             res.send('api-crypt is running. See /api/v1 for endpoints.');
         });

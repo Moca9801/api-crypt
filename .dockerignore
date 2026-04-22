@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# TypeScript sources (not needed in image — only dist/)
+src/
+
+# Build artifacts (rebuilt inside Docker)
+dist/
+
+# Environment files — NEVER en la imagen
+.env
+.env.*
+!.env.example
+
+# Keys database — datos del host, no de la imagen
+*.db.json
+data/
+data-dev/
+
+# Logs
+*.log
+logs/
+
+# Test files
+coverage/
+
+# Dev tools
+.vscode/
+.idea/
+*.md
+
+# Git
+.git/
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CI
+.github/

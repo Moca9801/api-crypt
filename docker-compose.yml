@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# api-crypt — Docker Compose (Producción)
+#
+# Uso:
+#   1. cp .env.example .env
+#   2. Completa MASTER_KEY, API_KEY y ALLOWED_ORIGINS en .env
+#   3. docker compose up -d
+#   4. Verificar: curl http://localhost:3000/api/v1/health
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  api-crypt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: api-crypt:latest
+    container_name: api-crypt
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # ── Seguridad — OBLIGATORIAS en producción ──────────────────────────────
+      API_KEY: ${API_KEY:?API_KEY is required. Set it in your .env file.}
+      MASTER_KEY: ${MASTER_KEY:?MASTER_KEY is required (64 hex chars). Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required in production (e.g. https://myapp.com)}
+      # ── Persistencia ────────────────────────────────────────────────────────
+      KEYS_DB_PATH: /data/keys.db.json
+      # ── Rate limiting ────────────────────────────────────────────────────────
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-120}
+      # ── Rutas legacy ────────────────────────────────────────────────────────
+      DISABLE_LEGACY_CRYPTO_ROUTES: "true"
+      # ── Rotación automática ─────────────────────────────────────────────────
+      ROTATION_CHECK_INTERVAL_MS: ${ROTATION_CHECK_INTERVAL_MS:-3600000}
+      # ── Métricas ────────────────────────────────────────────────────────────
+      METRICS_ALLOWED_IPS: ${METRICS_ALLOWED_IPS:-127.0.0.1,::1}
+
+    volumes:
+      # Base de datos de claves persistida fuera del contenedor
+      - keys-data:/data
+
+    # Hardening de seguridad del contenedor
+    read_only: true                   # sistema de archivos de solo lectura
+    tmpfs:
+      - /tmp:size=64m,mode=1777       # único directorio writable
+    security_opt:
+      - no-new-privileges:true        # sin escalada de privilegios
+    cap_drop:
+      - ALL                           # sin capabilities de Linux innecesarias
+
+    # Límites de recursos
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 256M
+        reservations:
+          memory: 64M
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  keys-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${KEYS_DATA_PATH:-./data}   # directorio en el host, editable en .env

@@ -11,24 +11,17 @@ import { ManagedHybridEncryptUseCase } from '../../core/application/use-cases/ma
 import { ManagedHybridDecryptUseCase } from '../../core/application/use-cases/managed/managed-hybrid-decrypt.usecase';
 import { ManagedSignDataUseCase } from '../../core/application/use-cases/managed/managed-sign-data.usecase';
 import { ManagedVerifySignatureUseCase } from '../../core/application/use-cases/managed/managed-verify-signature.usecase';
+import { SetRotationPolicyUseCase } from '../../core/application/use-cases/managed/set-rotation-policy.usecase';
+import { CheckPendingRotationsUseCase } from '../../core/application/use-cases/managed/check-pending-rotations.usecase';
 import { ManagedUseCases } from '../../core/application/use-cases/managed/managed-use-cases';
 import { CryptoController } from '../../interfaces/http/controllers/crypto.controller';
+import { RotationScheduler } from '../scheduler/rotation-scheduler';
+import { updateKeyStoreMetrics } from '../../libs/middlewares/metrics.middleware';
 
 // ── Master Key ──────────────────────────────────────────────────────────────
 
-/**
- * Reads the MASTER_KEY env var and returns a 32-byte Buffer.
- * In production, the key MUST be set. In development, a zero-byte key is used
- * with a loud console warning.
- *
- * Generate a secure key with:
- *   node -e "require('crypto').randomBytes(32).toString('hex') |> console.log"
- *   // or
- *   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
- */
 function getMasterKey(): Buffer {
     const hex = process.env.MASTER_KEY?.trim();
-
     if (!hex) {
         if (process.env.NODE_ENV === 'production') {
             throw new Error(
@@ -42,9 +35,8 @@ function getMasterKey(): Buffer {
             '   Private keys stored on disk are NOT securely encrypted.\n' +
             '   Set MASTER_KEY in your .env file before any production use.\n'
         );
-        return Buffer.alloc(32, 0); // all-zero: obviously insecure, only for dev
+        return Buffer.alloc(32, 0);
     }
-
     const key = Buffer.from(hex, 'hex');
     if (key.length !== 32) {
         throw new Error(
@@ -58,6 +50,7 @@ function getMasterKey(): Buffer {
 // ── Singleton Controller ─────────────────────────────────────────────────────
 
 let controllerSingleton: CryptoController | undefined;
+let schedulerSingleton: RotationScheduler | undefined;
 
 export function getCryptoController(): CryptoController {
     if (!controllerSingleton) {
@@ -69,6 +62,9 @@ export function getCryptoController(): CryptoController {
         const keyRepo = new FileSystemManagedKeyRepository(dbPath);
         const managedDomain = new ManagedKeyDomainService(cryptoProvider, keyRepo);
 
+        const setRotationPolicy = new SetRotationPolicyUseCase(keyRepo, managedDomain);
+        const checkPendingRotations = new CheckPendingRotationsUseCase(keyRepo, managedDomain);
+
         const managedUseCases: ManagedUseCases = {
             createManagedKey: new CreateManagedKeyUseCase(cryptoProvider, keyRepo, managedDomain, keyVault),
             listManagedKeys: new ListManagedKeysUseCase(keyRepo, managedDomain),
@@ -79,12 +75,32 @@ export function getCryptoController(): CryptoController {
             managedHybridDecrypt: new ManagedHybridDecryptUseCase(cryptoProvider, managedDomain, keyVault),
             managedSignData: new ManagedSignDataUseCase(cryptoProvider, managedDomain, keyVault),
             managedVerifySignature: new ManagedVerifySignatureUseCase(cryptoProvider, managedDomain),
+            setRotationPolicy,
+            checkPendingRotations,
         };
 
         const legacyRoutesDisabled =
             (process.env.DISABLE_LEGACY_CRYPTO_ROUTES ?? (process.env.NODE_ENV === 'production' ? 'true' : 'false')) === 'true';
 
         controllerSingleton = new CryptoController(cryptoProvider, managedUseCases, legacyRoutesDisabled);
+
+        // ── Scheduler de rotación automática ──────────────────────────────────
+        schedulerSingleton = new RotationScheduler(keyRepo, cryptoProvider, keyVault, managedDomain);
+        schedulerSingleton.start();
+
+        // ── Métricas periódicas del key store (cada 30s) ────────────────────
+        const metricsTimer = setInterval(() => {
+            const all = keyRepo.list();
+            const active = all.filter((k) => k.status === 'active').length;
+            const disabled = all.filter((k) => k.status === 'disabled').length;
+            const pending = checkPendingRotations.execute(7).length;
+            updateKeyStoreMetrics(active, disabled, pending);
+        }, 30_000);
+        if (metricsTimer.unref) metricsTimer.unref();
     }
     return controllerSingleton;
+}
+
+export function getScheduler(): RotationScheduler | undefined {
+    return schedulerSingleton;
 }

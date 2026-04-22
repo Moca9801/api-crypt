@@ -7,16 +7,25 @@ router.use(requireApiKey);
 router.use(cryptoRateLimit);
 const controller = getCryptoController();
 
+// ── Managed key lifecycle ─────────────────────────────────────────────────────
 router.post('/keys/managed/create', controller.createManagedKey);
 router.get('/keys/managed', controller.listManagedKeys);
 router.get('/keys/managed/:keyId/public', controller.getManagedPublicKey);
 router.post('/keys/managed/:keyId/rotate', controller.rotateManagedKey);
 router.post('/keys/managed/:keyId/disable', controller.disableManagedKey);
+
+// ── Rotation policy ────────────────────────────────────────────────────────────
+router.post('/keys/managed/:keyId/policy', controller.setRotationPolicy);
+router.delete('/keys/managed/:keyId/policy', controller.deleteRotationPolicy);
+router.get('/keys/managed/rotation/pending', controller.checkPendingRotations);
+
+// ── Managed crypto operations ─────────────────────────────────────────────────
 router.post('/managed/hybrid/encrypt', controller.managedHybridEncrypt);
 router.post('/managed/hybrid/decrypt', controller.managedHybridDecrypt);
 router.post('/managed/sign/data', controller.managedSignData);
 router.post('/managed/sign/verify', controller.managedSignVerify);
 
+// ── Legacy stateless routes (disabled in production by default) ───────────────
 router.post('/keys/generate', controller.keysGenerate);
 router.post('/keys/fingerprint', controller.keyFingerprint);
 router.post('/hybrid/encrypt', controller.hybridEncrypt);

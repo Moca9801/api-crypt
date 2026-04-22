@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { CryptoProviderPort } from '../../../core/application/ports/crypto-provider.port';
 import { CryptServiceError, KeyGenOptions, SealedBlob, SignAlg } from '../../../libs/services/crypt.service';
 import { ManagedUseCases } from '../../../core/application/use-cases/managed/managed-use-cases';
+import { RotationPolicy } from '../../../core/domain/managed-key';
 
 type KeyGenReqBody = {
     type?: string;
@@ -187,6 +188,44 @@ export class CryptoController {
                     typeof passphrase === 'string' ? passphrase : undefined
                 ),
             });
+        } catch (err) {
+            return this.sendError(res, err);
+        }
+    };
+
+    // ── Rotation policy ───────────────────────────────────────────────────────
+
+    setRotationPolicy = (req: Request, res: Response) => {
+        try {
+            const { ttlDays, onExpiry } = req.body as { ttlDays?: number; onExpiry?: string };
+            if (typeof ttlDays !== 'number' || ttlDays < 1) {
+                return res.status(400).json({ ok: false, error: 'ttlDays (number >= 1) is required' });
+            }
+            const policy: RotationPolicy = {
+                ttlDays,
+                onExpiry: onExpiry === 'keep' ? 'keep' : 'disable',
+            };
+            return res.json({ ok: true, metadata: this.managedUseCases.setRotationPolicy.execute(req.params.keyId, policy) });
+        } catch (err) {
+            return this.sendError(res, err);
+        }
+    };
+
+    deleteRotationPolicy = (req: Request, res: Response) => {
+        try {
+            // Eliminar policy es equivalente a setear una sin nextRotationAt
+            // Reutilizamos el use case pasando ttlDays=0 indicando eliminación
+            // En su lugar, devolvemos un error claro — implementación futura
+            return res.status(501).json({ ok: false, error: 'DELETE policy not yet implemented. Set a new policy to override.' });
+        } catch (err) {
+            return this.sendError(res, err);
+        }
+    };
+
+    checkPendingRotations = (_req: Request, res: Response) => {
+        try {
+            const pending = this.managedUseCases.checkPendingRotations.execute(7);
+            return res.json({ ok: true, count: pending.length, keys: pending });
         } catch (err) {
             return this.sendError(res, err);
         }

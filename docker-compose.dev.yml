@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# api-crypt — Docker Compose Override (Desarrollo)
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   # O directamente con el alias:
+#   npm run docker:dev
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  api-crypt:
+    build:
+      target: builder              # usa el stage de build para acceso a TS
+    image: api-crypt:dev
+    container_name: api-crypt-dev
+    environment:
+      NODE_ENV: development
+      API_KEY: dev-api-key         # clave de dev insegura — solo local
+      MASTER_KEY: ""               # usa la clave de dev por defecto (warning en consola)
+      ALLOWED_ORIGINS: ""          # permite localhost por defecto
+      DISABLE_LEGACY_CRYPTO_ROUTES: "false"
+      METRICS_ALLOWED_IPS: "127.0.0.1,::1,0.0.0.0"
+    volumes:
+      # Hot-reload: monta las fuentes TypeScript
+      - ./src:/app/src
+      # Base de datos local de desarrollo
+      - ./data-dev:/data
+    # Sin hardening en dev para facilitar debugging
+    read_only: false
+    tmpfs: []
+    security_opt: []
+    cap_drop: []
+    command: ["node", "dist/index.js"]

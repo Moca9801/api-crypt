@@ -3,10 +3,6 @@ import { ManagedKey, ManagedKeyMetadata } from '../../domain/managed-key';
 import { CryptoProviderPort } from '../ports/crypto-provider.port';
 import { ManagedKeyRepositoryPort } from '../ports/managed-key-repository.port';
 
-/**
- * Domain service for managed key business rules.
- * Shared across multiple use cases — keeps domain logic DRY.
- */
 export class ManagedKeyDomainService {
     constructor(
         private readonly cryptoProvider: CryptoProviderPort,
@@ -14,6 +10,11 @@ export class ManagedKeyDomainService {
     ) {}
 
     toMetadata(key: ManagedKey): ManagedKeyMetadata {
+        let daysUntilRotation: number | undefined;
+        if (key.nextRotationAt) {
+            const msLeft = new Date(key.nextRotationAt).getTime() - Date.now();
+            daysUntilRotation = Math.max(0, Math.ceil(msLeft / 86_400_000));
+        }
         return {
             keyId: key.keyId,
             type: key.type,
@@ -22,6 +23,9 @@ export class ManagedKeyDomainService {
             passphraseProtected: key.passphraseProtected,
             createdAt: key.createdAt,
             rotatedAt: key.rotatedAt,
+            rotationPolicy: key.rotationPolicy,
+            nextRotationAt: key.nextRotationAt,
+            daysUntilRotation,
             fingerprintSha256Hex: this.cryptoProvider.publicKeyFingerprint(key.publicKey),
         };
     }
@@ -50,5 +54,11 @@ export class ManagedKeyDomainService {
                 'ALGORITHM_MISMATCH'
             );
         }
+    }
+
+    /** Calcula la fecha de próxima rotación dado un TTL en días. */
+    computeNextRotationAt(ttlDays: number, fromDate = new Date()): string {
+        const next = new Date(fromDate.getTime() + ttlDays * 86_400_000);
+        return next.toISOString();
     }
 }
