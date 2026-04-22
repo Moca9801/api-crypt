@@ -51,6 +51,29 @@ Built with Node.js + Express + TypeScript.
    // Save encryptedData (ciphertext, iv, authTag) to your PostgreSQL DB
    ```
 4. **Decrypt data** when needed by passing the `encryptedData` JSON back to `/managed/hybrid/decrypt` using the same `keyId`.
+
+## Node.js / TypeScript SDK
+
+If your main backend uses Node.js or TypeScript, you can use the official type-safe SDK included in this repository:
+
+```typescript
+import { ApiCryptClient } from 'api-crypt-client';
+
+const crypt = new ApiCryptClient({
+    baseUrl: 'http://localhost:3000/api/v1',
+    apiKey: process.env.CRYPTO_API_KEY
+});
+
+// Create a Managed Key
+await crypt.keys.create({ keyId: 'my-key', type: 'rsa', modulusLength: 4096 });
+
+// Hybrid Encrypt
+const payload = await crypt.managed.hybridEncrypt({ keyId: 'my-key', plaintext: 'secret' });
+
+// Sealed Payloads (Magic Links)
+const token = await crypt.sealed.create({ data: { user: 1 }, secret: 'app-secret', ttlSeconds: 300 });
+```
+
 ## Architecture
 
 This project now follows a Clean Architecture-inspired structure:
