@@ -20,6 +20,37 @@ Built with Node.js + Express + TypeScript.
 - OpenAPI JSON endpoint
 - Postman collection included
 
+## Use Cases & Strategy
+
+`api-crypt` acts as a "Secure Vault" microservice. Instead of polluting your main backend with complex cryptography logic and exposing private keys in memory or logs, your backend delegates these operations.
+
+- **PII Protection:** Encrypt credit cards, SSNs, and medical records before saving them to your main database (PostgreSQL/MongoDB). If your main DB is compromised, attackers only get ciphertext.
+- **Webhook Signatures:** Sign payloads securely without exposing the private key to the web backend.
+- **Secure Tokens / Magic Links:** Create sealed payloads for one-time links that prevent replay attacks.
+- **CPU Isolation:** Offload expensive RSA/AES operations to a dedicated container.
+
+## How it works (Workflow)
+
+1. **Start the service** with your `API_KEY` and `MASTER_KEY` environment variables.
+2. **Create a Managed Key** from your main backend:
+   ```bash
+   curl -X POST http://localhost:3000/api/v1/crypto/keys/managed/create \
+     -H "X-API-KEY: <your-api-key>" \
+     -H "Content-Type: application/json" \
+     -d '{"keyId": "prod-cards", "type": "rsa", "modulusLength": 4096}'
+   ```
+   *(The private key is generated, encrypted with your `MASTER_KEY`, and securely saved to `keys.db.json`. Your backend never sees it).*
+3. **Encrypt sensitive data** before saving it to your DB:
+   ```javascript
+   const response = await fetch('http://api-crypt:3000/api/v1/crypto/managed/hybrid/encrypt', {
+       method: 'POST',
+       headers: { 'X-API-KEY': '<your-api-key>', 'Content-Type': 'application/json' },
+       body: JSON.stringify({ keyId: 'prod-cards', plaintext: '4111222233334444' })
+   });
+   const encryptedData = await response.json(); 
+   // Save encryptedData (ciphertext, iv, authTag) to your PostgreSQL DB
+   ```
+4. **Decrypt data** when needed by passing the `encryptedData` JSON back to `/managed/hybrid/decrypt` using the same `keyId`.
 ## Architecture
 
 This project now follows a Clean Architecture-inspired structure:
