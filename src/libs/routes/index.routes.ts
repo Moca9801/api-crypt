@@ -64,9 +64,15 @@ v1Router.get('/docs/openapi.json', (_req, res) => {
 const METRICS_ALLOWED = (process.env.METRICS_ALLOWED_IPS ?? '127.0.0.1,::1')
     .split(',').map((ip) => ip.trim()).filter(Boolean);
 
+function normalizeIp(ip: string): string {
+    const normalized = ip.trim();
+    // Express/sockets may expose IPv4 as IPv6-mapped format (::ffff:127.0.0.1).
+    return normalized.startsWith('::ffff:') ? normalized.slice(7) : normalized;
+}
+
 v1Router.get('/metrics', (req: Request, res: Response) => {
-    const clientIp = req.ip ?? req.socket.remoteAddress ?? '';
-    const allowed = METRICS_ALLOWED.some((allowed) => clientIp === allowed);
+    const clientIp = normalizeIp(req.ip ?? req.socket.remoteAddress ?? '');
+    const allowed = METRICS_ALLOWED.some((allowed) => clientIp === normalizeIp(allowed));
     if (!allowed) {
         return res.status(403).json({ ok: false, error: 'Metrics endpoint access denied.' });
     }
