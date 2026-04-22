@@ -5,6 +5,11 @@ import { metricsRegistry } from '../../infrastructure/metrics/metrics-registry';
 
 const v1Router = express.Router();
 
+// ── Health Check ──────────────────────────────────────────────────────────────
+v1Router.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'pass', timestamp: new Date().toISOString() });
+});
+
 v1Router.get('/', (_req, res) => {
     res.json({
         ok: true,

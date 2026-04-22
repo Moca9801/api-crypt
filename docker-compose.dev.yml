@@ -30,4 +30,4 @@ services:
     tmpfs: []
     security_opt: []
     cap_drop: []
-    command: ["node", "dist/index.js"]
+    command: ["npm", "run", "dev"]
