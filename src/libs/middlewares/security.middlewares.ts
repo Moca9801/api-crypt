@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { timingSafeEqual } from 'crypto';
 
 const DEFAULT_API_KEY = 'dev-api-key';
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS ?? '60000');
@@ -33,7 +34,12 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction) {
     const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
     const token = headerValue || bearer;
 
-    if (!token || token !== configured) {
+    // Timing-safe comparison — previene ataques de timing para enumerar la API key
+    const isValid =
+        token.length === configured.length &&
+        timingSafeEqual(Buffer.from(token, 'utf8'), Buffer.from(configured, 'utf8'));
+
+    if (!token || !isValid) {
         return res.status(401).json({
             ok: false,
             error: 'Unauthorized. Provide x-api-key header (or Bearer token).',

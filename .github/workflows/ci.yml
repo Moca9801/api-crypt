@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Calidad de código ─────────────────────────────────────────────────────
+  typecheck-and-test:
+    name: TypeScript + Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck (server)
+        run: npm run typecheck
+
+      - name: TypeScript typecheck (SDK)
+        run: npx tsc --project packages/api-crypt-client/tsconfig.json --noEmit
+
+      - name: Run tests
+        run: npm test
+
+  # ── Auditoría de dependencias ─────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (fail on moderate+)
+        run: npm audit --audit-level=moderate
+
+      - name: SDK audit
+        working-directory: packages/api-crypt-client
+        run: npm audit --audit-level=moderate || true  # SDK aún no tiene package-lock
+
+  # ── Build Docker (verificación) ───────────────────────────────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: api-crypt:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
