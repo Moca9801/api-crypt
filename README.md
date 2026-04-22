@@ -56,6 +56,7 @@ Create `.env` from `.env.example`.
 - `RATE_LIMIT_MAX`: max requests per route/window (default `120`)
 - `DISABLE_LEGACY_CRYPTO_ROUTES`: disables unsafe legacy key-material endpoints
   - default: `true` when `NODE_ENV=production`, else `false`
+- `TRUST_PROXY`: set to `true` or a list of proxy IPs if running behind an API Gateway/Load Balancer
 
 ## API docs
 
@@ -86,9 +87,9 @@ Legacy raw key routes remain for compatibility, but can be disabled via:
 
 ## Security model notes
 
-- API key auth is baseline protection, not enterprise IAM.
-- Managed keys are persisted securely to the file system (`keys.db.json`) using AES-256-GCM encryption at rest (requires `MASTER_KEY`).
-- Deploy behind TLS and a reverse proxy in all non-local environments.
+- **Authorization:** API key auth is baseline protection. **Client Scopes and Multi-Tenancy must be enforced at your API Gateway.**
+- **Persistence:** Managed keys are persisted securely to the file system (`keys.db.json`) using AES-256-GCM encryption at rest (requires `MASTER_KEY`).
+- **Network:** Deploy behind TLS and a reverse proxy in all non-local environments. Set `TRUST_PROXY` accordingly.
 - See `SECURITY.md` for reporting and hardening guidance.
 
 ## Contributing
