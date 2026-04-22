@@ -1,0 +1,37 @@
+{
+  "name": "api-crypt-client",
+  "version": "0.1.0",
+  "description": "Official SDK client for api-crypt — cryptographic REST API for developers",
+  "keywords": ["cryptography", "aes", "rsa", "ecdsa", "key-management", "encryption", "sdk"],
+  "author": "api-crypt contributors",
+  "license": "ISC",
+  "homepage": "https://github.com/Moca9801/api-crypt#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Moca9801/api-crypt.git",
+    "directory": "packages/api-crypt-client"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\""
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
