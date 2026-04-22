@@ -75,6 +75,7 @@ Key security design decisions are documented in:
 The following limitations are **by design** and documented as out-of-scope:
 
 - **No TLS**: api-crypt does not implement TLS — use a reverse proxy (nginx, Traefik, Caddy)
+- **Authorization Scopes / Multi-tenancy**: api-crypt uses a single shared `API_KEY` and does not implement fine-grained scopes or tenant isolation. You **must** enforce client scopes, RBAC, and mTLS at your API Gateway layer before traffic reaches this container.
 - **Single-instance**: Multiple instances sharing the same `keys.db.json` is not supported
 - **No HSM support**: Private keys are encrypted with a software master key, not a hardware security module
 - **Passphrase not stored**: Keys created with a passphrase require it on each operation — the server never stores it

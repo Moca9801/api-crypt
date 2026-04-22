@@ -39,6 +39,11 @@ export class App {
 
     private settings() {
         this.app.set('port', this.port || process.env.PORT || 3000);
+        if (process.env.TRUST_PROXY) {
+            // Permite '1', 'true', o listas de IPs (ej: 'loopback, linklocal, uniquelocal')
+            const tp = process.env.TRUST_PROXY;
+            this.app.set('trust proxy', tp === 'true' || tp === '1' ? 1 : tp);
+        }
     }
 
     private middlewares() {

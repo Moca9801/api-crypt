@@ -16,10 +16,11 @@ export class RotateManagedKeyUseCase {
     async execute(keyId: string, opts?: { passphrase?: string; modulusLength?: 2048 | 3072 | 4096; namedCurve?: 'prime256v1' | 'secp384r1' }, clientIp = 'system') {
         const key = await this.managedDomain.getActiveOrThrow(keyId);
 
+        const originalParams = this.managedDomain.getOriginalAlgorithmParams(key);
         const generated = this.cryptoProvider.generateKeyPair(
             key.type === 'rsa'
-                ? { type: 'rsa', modulusLength: opts?.modulusLength ?? 2048, passphrase: opts?.passphrase }
-                : { type: 'ec', namedCurve: opts?.namedCurve ?? 'prime256v1', passphrase: opts?.passphrase }
+                ? { type: 'rsa', modulusLength: opts?.modulusLength ?? originalParams.modulusLength, passphrase: opts?.passphrase }
+                : { type: 'ec', namedCurve: opts?.namedCurve ?? originalParams.namedCurve, passphrase: opts?.passphrase }
         );
 
         const nextRotationAt = key.rotationPolicy

@@ -131,6 +131,7 @@ export class CryptoController {
     };
 
     symmetricEncrypt = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { plaintext, key } = req.body as { plaintext?: string; key?: string };
             if (typeof plaintext !== 'string') {
@@ -143,6 +144,7 @@ export class CryptoController {
     };
 
     symmetricDecrypt = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { iv, authTag, ciphertext, key } = req.body as { iv?: string; authTag?: string; ciphertext?: string; key?: string };
             if (typeof iv !== 'string' || typeof authTag !== 'string' || typeof ciphertext !== 'string' || typeof key !== 'string') {
@@ -155,6 +157,7 @@ export class CryptoController {
     };
 
     pbkdf2 = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { password, salt, iterations } = req.body as { password?: string; salt?: string; iterations?: number };
             if (typeof password !== 'string') {
@@ -174,6 +177,7 @@ export class CryptoController {
     };
 
     hashSha256 = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { data, inputEncoding } = req.body as { data?: string; inputEncoding?: 'utf8' | 'base64' };
             if (typeof data !== 'string') {
@@ -186,6 +190,7 @@ export class CryptoController {
     };
 
     hashCombine = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { hashA, hashB, mode, hmacSecret } = req.body as {
                 hashA?: string; hashB?: string; mode?: string; hmacSecret?: string;
@@ -206,6 +211,7 @@ export class CryptoController {
     };
 
     hmacSign = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { data, secret } = req.body as { data?: string; secret?: string };
             if (typeof data !== 'string' || typeof secret !== 'string') {
@@ -218,6 +224,7 @@ export class CryptoController {
     };
 
     hmacVerify = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { data, secret, signatureHex } = req.body as { data?: string; secret?: string; signatureHex?: string };
             if (typeof data !== 'string' || typeof secret !== 'string' || typeof signatureHex !== 'string') {
@@ -230,6 +237,7 @@ export class CryptoController {
     };
 
     tokenCreate = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { payload, secret, expiresInSeconds } = req.body as {
                 payload?: Record<string, unknown>; secret?: string; expiresInSeconds?: number;
@@ -251,6 +259,7 @@ export class CryptoController {
     };
 
     tokenVerify = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { token, secret } = req.body as { token?: string; secret?: string };
             if (typeof token !== 'string' || typeof secret !== 'string') {
@@ -263,6 +272,7 @@ export class CryptoController {
     };
 
     sealedCreate = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { data, secret, ttlSeconds } = req.body as { data?: Record<string, unknown>; secret?: string; ttlSeconds?: number };
             if (!data || typeof data !== 'object' || typeof secret !== 'string' || typeof ttlSeconds !== 'number') {
@@ -275,6 +285,7 @@ export class CryptoController {
     };
 
     sealedOpen = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { sealed, secret } = req.body as { sealed?: SealedBlob; secret?: string };
             if (!sealed || typeof secret !== 'string') {
@@ -287,6 +298,7 @@ export class CryptoController {
     };
 
     randomBytes = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const n = parseInt(String(req.query.length ?? '32'), 10);
             const buf = this.cryptoProvider.getRandomBytes(Number.isFinite(n) ? n : 32);
@@ -297,6 +309,7 @@ export class CryptoController {
     };
 
     randomUuid = (_req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         return res.json({ ok: true, uuid: this.cryptoProvider.getRandomUuid() });
     };
 
@@ -338,6 +351,7 @@ export class CryptoController {
     };
 
     timingSafeEqual = (req: Request, res: Response) => {
+        if (this.blockLegacyRoute(res)) return;
         try {
             const { aHex, bHex } = req.body as { aHex?: string; bHex?: string };
             if (typeof aHex !== 'string' || typeof bHex !== 'string') {

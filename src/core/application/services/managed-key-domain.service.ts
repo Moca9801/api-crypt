@@ -55,4 +55,20 @@ export class ManagedKeyDomainService {
     computeNextRotationAt(ttlDays: number, fromDate = new Date()): string {
         return new Date(fromDate.getTime() + ttlDays * 86_400_000).toISOString();
     }
+
+    getOriginalAlgorithmParams(key: ManagedKey): { type: 'rsa' | 'ec'; modulusLength?: 2048 | 3072 | 4096; namedCurve?: 'prime256v1' | 'secp384r1' } {
+        if (key.type === 'rsa') {
+            const parts = key.algorithm.split('-');
+            const len = parts.length > 1 ? parseInt(parts[1], 10) : 2048;
+            const validLens = [2048, 3072, 4096];
+            return { type: 'rsa', modulusLength: validLens.includes(len) ? (len as 2048 | 3072 | 4096) : 2048 };
+        }
+        if (key.type === 'ec') {
+            const parts = key.algorithm.split('-');
+            const curve = parts.length > 1 ? parts[1] : 'prime256v1';
+            return { type: 'ec', namedCurve: curve === 'secp384r1' ? 'secp384r1' : 'prime256v1' };
+        }
+        // Fallback for unknown types
+        return { type: 'rsa', modulusLength: 2048 };
+    }
 }

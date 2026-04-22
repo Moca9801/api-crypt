@@ -74,11 +74,8 @@ export class RotationScheduler {
 
     private async rotateKey(key: ManagedKey): Promise<void> {
         const policy = key.rotationPolicy!;
-        const generated = this.cryptoProvider.generateKeyPair(
-            key.type === 'rsa'
-                ? { type: 'rsa', modulusLength: 2048 }
-                : { type: 'ec', namedCurve: 'prime256v1' }
-        );
+        const originalParams = this.managedDomain.getOriginalAlgorithmParams(key);
+        const generated = this.cryptoProvider.generateKeyPair(originalParams);
         const nextRotationAt = this.managedDomain.computeNextRotationAt(policy.ttlDays);
         const rotated: ManagedKey = {
             ...key,

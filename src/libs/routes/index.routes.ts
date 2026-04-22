@@ -67,7 +67,7 @@ const METRICS_ALLOWED = (process.env.METRICS_ALLOWED_IPS ?? '127.0.0.1,::1')
 v1Router.get('/metrics', (req: Request, res: Response) => {
     const clientIp = req.ip ?? req.socket.remoteAddress ?? '';
     const allowed = METRICS_ALLOWED.some((allowed) =>
-        clientIp === allowed || clientIp.endsWith(allowed) || allowed === '0.0.0.0'
+        clientIp === allowed || clientIp.endsWith(allowed)
     );
     if (!allowed) {
         return res.status(403).json({ ok: false, error: 'Metrics endpoint access denied.' });
