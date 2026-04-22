@@ -106,8 +106,7 @@ export class MetricsRegistry {
                     lines.push(`${name}_bucket{${baseLabels}le="${h.buckets[i]}"} ${cumulative}`);
                 }
                 lines.push(`${name}_bucket{${baseLabels}le="+Inf"} ${h.count}`);
-                lines.push(`${name}_sum{${key ? `{${key}}` : ''}}`  // fixed below
-                    .replace(/sum\{.*?\}/, `sum${key ? `{${key}}` : ''} ${h.sum}`));
+                lines.push(`${name}_sum${key ? `{${key}}` : ''} ${h.sum}`);
                 lines.push(`${name}_count${key ? `{${key}}` : ''} ${h.count}`);
             }
         }

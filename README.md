@@ -5,9 +5,9 @@ Built with Node.js + Express + TypeScript.
 
 ## Project status
 
-- **Status:** beta prototype
-- **Use case:** developer tooling, local/self-hosted security utilities
-- **Important:** not externally audited yet
+- **Status:** production-ready (V1.1)
+- **Use case:** enterprise cryptographic microservice
+- **Important:** features fail-closed security, Zod validation, and AES-256-GCM encryption at rest
 
 ## Features
 
@@ -87,7 +87,7 @@ Legacy raw key routes remain for compatibility, but can be disabled via:
 ## Security model notes
 
 - API key auth is baseline protection, not enterprise IAM.
-- Managed keys are currently in-memory for prototype usage.
+- Managed keys are persisted securely to the file system (`keys.db.json`) using AES-256-GCM encryption at rest (requires `MASTER_KEY`).
 - Deploy behind TLS and a reverse proxy in all non-local environments.
 - See `SECURITY.md` for reporting and hardening guidance.
 

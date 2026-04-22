@@ -12,7 +12,7 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
 
     res.on('finish', () => {
         const durationMs = Date.now() - startMs;
-        const route = req.route?.path ?? req.path ?? 'unknown';
+        const route = req.route?.path ?? 'unknown_route';
         const method = req.method;
         const status = String(res.statusCode);
         const statusClass = `${res.statusCode < 400 ? 'success' : 'error'}`;

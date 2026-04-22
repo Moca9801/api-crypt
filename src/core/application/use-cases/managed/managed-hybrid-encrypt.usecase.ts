@@ -1,6 +1,7 @@
 import { CryptoProviderPort } from '../../ports/crypto-provider.port';
 import { ManagedKeyDomainService } from '../../services/managed-key-domain.service';
 import { auditLog } from '../../../../infrastructure/audit/audit-logger';
+import { CryptServiceError } from '../../../../libs/services/crypt.service';
 
 export class ManagedHybridEncryptUseCase {
     constructor(
@@ -11,7 +12,7 @@ export class ManagedHybridEncryptUseCase {
     async execute(keyId: string, plaintext: string, clientIp = 'system') {
         const key = await this.managedDomain.getActiveOrThrow(keyId);
         if (key.type !== 'rsa') {
-            throw new Error('Hybrid encryption requires an RSA key');
+            throw new CryptServiceError('Hybrid encryption requires an RSA key', 'KEY_TYPE_MISMATCH');
         }
         auditLog({ event: 'managed.encrypt', keyId, ip: clientIp });
         return { keyId, ...this.cryptoProvider.hybridEncrypt(plaintext, key.publicKey) };
