@@ -4,7 +4,7 @@ export function getOpenApiDocument() {
         info: {
             title: 'api-crypt',
             version: '1.0.0',
-            description: 'Prototype cryptographic API with managed keys, auth, and rate limiting.',
+            description: 'Lightweight cryptographic microservice with managed keys, auth, and rate limiting. Production-ready for single-instance deployments.',
         },
         servers: [{ url: 'http://localhost:3000' }],
         tags: [

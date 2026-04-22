@@ -80,7 +80,7 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction) {
 
 export function cryptoRateLimit(req: Request, res: Response, next: NextFunction) {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    const key = `${ip}:${req.method}:${req.route?.path || req.path}`;
+    const key = ip; // Global rate limit per IP to avoid high cardinality from dynamic paths
     const bucket = getBucket(key);
     const remainingBefore = MAX_REQUESTS - bucket.count;
 
