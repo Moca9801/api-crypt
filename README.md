@@ -9,6 +9,9 @@ Built with Node.js + Express + TypeScript.
 - **Use case:** lightweight cryptographic microservice
 - **Important:** features fail-closed security, Zod validation, and AES-256-GCM encryption at rest
 
+> [!IMPORTANT]
+> **Production Requirement:** This service does **NOT** implement TLS or Client Authentication natively. It **MUST** be deployed behind an API Gateway, Reverse Proxy (e.g., Nginx, Traefik), or Load Balancer that enforces TLS (HTTPS) and isolates the internal network.
+
 ## Features
 
 - Managed key lifecycle (`keyId`): create, list, rotate, disable
@@ -144,6 +147,7 @@ Legacy raw key routes remain for compatibility, but can be disabled via:
 - **Authorization:** API key auth is baseline protection. **Client Scopes and Multi-Tenancy must be enforced at your API Gateway.**
 - **Persistence:** Managed keys are persisted securely to the file system (`keys.db.json`) using AES-256-GCM encryption at rest (requires `MASTER_KEY`).
 - **Network:** Deploy behind TLS and a reverse proxy in all non-local environments. Set `TRUST_PROXY` accordingly.
+- **Observability:** The `/api/v1/metrics` endpoint is protected by an IP allowlist (`METRICS_ALLOWED_IPS`). You must ensure this endpoint is only routable from your internal VPC/monitoring network and blocked at the public edge.
 - See `SECURITY.md` for reporting and hardening guidance.
 
 ## Contributing

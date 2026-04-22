@@ -7,7 +7,7 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000" },
-    { "key": "apiKey", "value": "dev-api-key" },
+    { "key": "apiKey", "value": "<INSERT_YOUR_API_KEY_HERE>" },
     { "key": "samplePlaintext", "value": "hello from moca" },
     { "key": "sampleDataBase64", "value": "aGVsbG8gZnJvbSBtb2Nh" },
     { "key": "managedKeyId", "value": "" },

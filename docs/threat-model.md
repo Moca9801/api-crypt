@@ -62,7 +62,7 @@
 | I-2 | MASTER_KEY en logs | `getMasterKey()` no loguea el valor | Bajo |
 | I-3 | Stack trace en error | `sendError()` solo expone message+code | Bajo |
 | I-4 | Passphrase en body sin TLS | **Requiere TLS en producción** | **Alto sin TLS** |
-| I-5 | API key timing attack | comparación directa (no timing-safe) | **Medio** |
+| I-5 | API key timing attack | comparación mitigada usando `crypto.timingSafeEqual` | **Mitigado** |
 
 ### Denial of Service
 | ID | Amenaza | Mitigación | Residual |

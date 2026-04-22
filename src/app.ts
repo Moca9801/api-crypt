@@ -3,6 +3,7 @@ import express, { Application } from 'express';
 import http from 'http';
 import morgan from 'morgan';
 import cors from 'cors';
+import helmet from 'helmet';
 import v1Router from './libs/routes/index.routes';
 import { metricsMiddleware } from './libs/middlewares/metrics.middleware';
 
@@ -47,6 +48,7 @@ export class App {
     }
 
     private middlewares() {
+        this.app.use(helmet());
         this.app.use(express.static('public'));
         this.app.use(morgan('dev'));
         // Body limit capped at 1 MB — no legitimate crypto payload needs more
