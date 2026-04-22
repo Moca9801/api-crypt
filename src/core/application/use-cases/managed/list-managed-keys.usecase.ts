@@ -1,5 +1,5 @@
-import { ManagedKeyRepositoryPort } from '../../ports/managed-key-repository.port';
 import { ManagedKeyDomainService } from '../../services/managed-key-domain.service';
+import { ManagedKeyRepositoryPort } from '../../ports/managed-key-repository.port';
 
 export class ListManagedKeysUseCase {
     constructor(
@@ -7,7 +7,8 @@ export class ListManagedKeysUseCase {
         private readonly managedDomain: ManagedKeyDomainService
     ) {}
 
-    execute() {
-        return this.managedKeyRepo.list().map((item) => this.managedDomain.toMetadata(item));
+    async execute() {
+        const keys = await this.managedKeyRepo.list();
+        return keys.map((k) => this.managedDomain.toMetadata(k));
     }
 }

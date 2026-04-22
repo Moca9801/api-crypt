@@ -1,3 +1,7 @@
+// ── Load environment variables FIRST — before any other module reads process.env ──
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { App } from './app';
 import { getScheduler } from './infrastructure/container/crypto.container';
 

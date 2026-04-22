@@ -3,11 +3,8 @@ import express, { Application } from 'express';
 import http from 'http';
 import morgan from 'morgan';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import v1Router from './libs/routes/index.routes';
 import { metricsMiddleware } from './libs/middlewares/metrics.middleware';
-
-dotenv.config();
 
 const START_TIME = Date.now();
 

@@ -3,23 +3,20 @@ import { ManagedKey } from '../../core/domain/managed-key';
 
 /**
  * In-memory implementation of ManagedKeyRepositoryPort.
- *
- * @dev-only — For use in tests and TEST_MODE=true only.
- * Keys are lost on process restart. Use FileSystemManagedKeyRepository for development
- * and any persistent deployment.
+ * @dev-only — For tests only. Keys are lost on process restart.
  */
 export class InMemoryManagedKeyRepository implements ManagedKeyRepositoryPort {
     private readonly keys = new Map<string, ManagedKey>();
 
-    save(key: ManagedKey): void {
+    async save(key: ManagedKey): Promise<void> {
         this.keys.set(key.keyId, key);
     }
 
-    getById(keyId: string): ManagedKey | undefined {
+    async getById(keyId: string): Promise<ManagedKey | undefined> {
         return this.keys.get(keyId);
     }
 
-    list(): ManagedKey[] {
+    async list(): Promise<ManagedKey[]> {
         return Array.from(this.keys.values());
     }
 }

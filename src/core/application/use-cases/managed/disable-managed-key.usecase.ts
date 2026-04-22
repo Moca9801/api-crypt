@@ -1,6 +1,6 @@
 import { ManagedKeyRepositoryPort } from '../../ports/managed-key-repository.port';
-import { ManagedKey } from '../../../domain/managed-key';
 import { ManagedKeyDomainService } from '../../services/managed-key-domain.service';
+import { auditLog } from '../../../../infrastructure/audit/audit-logger';
 
 export class DisableManagedKeyUseCase {
     constructor(
@@ -8,10 +8,11 @@ export class DisableManagedKeyUseCase {
         private readonly managedDomain: ManagedKeyDomainService
     ) {}
 
-    execute(keyId: string) {
-        const key = this.managedDomain.getOrThrow(keyId);
-        const updated: ManagedKey = { ...key, status: 'disabled', rotatedAt: new Date().toISOString() };
-        this.managedKeyRepo.save(updated);
-        return this.managedDomain.toMetadata(updated);
+    async execute(keyId: string, clientIp = 'system') {
+        const key = await this.managedDomain.getOrThrow(keyId);
+        const disabled = { ...key, status: 'disabled' as const };
+        await this.managedKeyRepo.save(disabled);
+        auditLog({ event: 'key.disabled', keyId, ip: clientIp });
+        return this.managedDomain.toMetadata(disabled);
     }
 }

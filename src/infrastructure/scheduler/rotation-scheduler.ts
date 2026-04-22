@@ -3,6 +3,7 @@ import { KeyVaultPort } from '../../core/application/ports/key-vault.port';
 import { CryptoProviderPort } from '../../core/application/ports/crypto-provider.port';
 import { ManagedKeyDomainService } from '../../core/application/services/managed-key-domain.service';
 import { ManagedKey } from '../../core/domain/managed-key';
+import { auditLog } from '../audit/audit-logger';
 
 /**
  * Scheduler de rotación automática de claves.
@@ -49,7 +50,8 @@ export class RotationScheduler {
     /** Comprueba todas las claves con política y rota las que han expirado. */
     private async checkAndRotate(): Promise<void> {
         const now = new Date();
-        const keys = this.managedKeyRepo.list().filter(
+        const allKeys = await this.managedKeyRepo.list();
+        const keys = allKeys.filter(
             (k) =>
                 k.status === 'active' &&
                 k.rotationPolicy !== undefined &&
@@ -58,7 +60,6 @@ export class RotationScheduler {
         );
 
         if (keys.length === 0) return;
-
         console.log(`[RotationScheduler] Found ${keys.length} key(s) due for rotation.`);
 
         for (const key of keys) {
@@ -73,18 +74,12 @@ export class RotationScheduler {
 
     private async rotateKey(key: ManagedKey): Promise<void> {
         const policy = key.rotationPolicy!;
-
-        // Generar nuevo par de claves del mismo tipo
         const generated = this.cryptoProvider.generateKeyPair(
             key.type === 'rsa'
                 ? { type: 'rsa', modulusLength: 2048 }
                 : { type: 'ec', namedCurve: 'prime256v1' }
         );
-
-        // Calcular próxima rotación
         const nextRotationAt = this.managedDomain.computeNextRotationAt(policy.ttlDays);
-
-        // Actualizar la clave con el nuevo material
         const rotated: ManagedKey = {
             ...key,
             algorithm: generated.algorithm,
@@ -94,6 +89,7 @@ export class RotationScheduler {
             rotatedAt: new Date().toISOString(),
             nextRotationAt,
         };
-        this.managedKeyRepo.save(rotated);
+        await this.managedKeyRepo.save(rotated);
+        auditLog({ event: 'key.rotated.auto', keyId: key.keyId });
     }
 }

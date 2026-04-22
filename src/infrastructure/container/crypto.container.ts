@@ -15,8 +15,11 @@ import { SetRotationPolicyUseCase } from '../../core/application/use-cases/manag
 import { CheckPendingRotationsUseCase } from '../../core/application/use-cases/managed/check-pending-rotations.usecase';
 import { ManagedUseCases } from '../../core/application/use-cases/managed/managed-use-cases';
 import { CryptoController } from '../../interfaces/http/controllers/crypto.controller';
+import { ManagedKeysController } from '../../interfaces/http/controllers/managed-keys.controller';
+import { ManagedCryptoController } from '../../interfaces/http/controllers/managed-crypto.controller';
 import { RotationScheduler } from '../scheduler/rotation-scheduler';
 import { updateKeyStoreMetrics } from '../../libs/middlewares/metrics.middleware';
+import { getConfiguredApiKey } from '../../libs/middlewares/security.middlewares';
 
 // ── Master Key ──────────────────────────────────────────────────────────────
 
@@ -47,13 +50,20 @@ function getMasterKey(): Buffer {
     return key;
 }
 
-// ── Singleton Controller ─────────────────────────────────────────────────────
+// ── Singleton Controllers ────────────────────────────────────────────────────
 
-let controllerSingleton: CryptoController | undefined;
+export interface CryptoControllers {
+    managedKeys: ManagedKeysController;
+    managedCrypto: ManagedCryptoController;
+    legacy: CryptoController;
+}
+
+let controllersSingleton: CryptoControllers | undefined;
 let schedulerSingleton: RotationScheduler | undefined;
 
-export function getCryptoController(): CryptoController {
-    if (!controllerSingleton) {
+export function getCryptoControllers(): CryptoControllers {
+    if (!controllersSingleton) {
+        getConfiguredApiKey(); // ← fail-fast: exits if API_KEY not set in non-dev envs
         const masterKey = getMasterKey();
         const dbPath = process.env.KEYS_DB_PATH ?? 'keys.db.json';
 
@@ -82,23 +92,27 @@ export function getCryptoController(): CryptoController {
         const legacyRoutesDisabled =
             (process.env.DISABLE_LEGACY_CRYPTO_ROUTES ?? (process.env.NODE_ENV === 'production' ? 'true' : 'false')) === 'true';
 
-        controllerSingleton = new CryptoController(cryptoProvider, managedUseCases, legacyRoutesDisabled);
+        controllersSingleton = {
+            managedKeys: new ManagedKeysController(managedUseCases),
+            managedCrypto: new ManagedCryptoController(managedUseCases),
+            legacy: new CryptoController(cryptoProvider, managedUseCases, legacyRoutesDisabled),
+        };
 
         // ── Scheduler de rotación automática ──────────────────────────────────
         schedulerSingleton = new RotationScheduler(keyRepo, cryptoProvider, keyVault, managedDomain);
         schedulerSingleton.start();
 
         // ── Métricas periódicas del key store (cada 30s) ────────────────────
-        const metricsTimer = setInterval(() => {
-            const all = keyRepo.list();
+        const metricsTimer = setInterval(async () => {
+            const all = await keyRepo.list();
             const active = all.filter((k) => k.status === 'active').length;
             const disabled = all.filter((k) => k.status === 'disabled').length;
-            const pending = checkPendingRotations.execute(7).length;
+            const pending = (await checkPendingRotations.execute(7)).length;
             updateKeyStoreMetrics(active, disabled, pending);
         }, 30_000);
         if (metricsTimer.unref) metricsTimer.unref();
     }
-    return controllerSingleton;
+    return controllersSingleton;
 }
 
 export function getScheduler(): RotationScheduler | undefined {

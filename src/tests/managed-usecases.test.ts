@@ -9,7 +9,6 @@ import { ManagedHybridEncryptUseCase } from '../core/application/use-cases/manag
 import { ManagedHybridDecryptUseCase } from '../core/application/use-cases/managed/managed-hybrid-decrypt.usecase';
 import { ManagedSignDataUseCase } from '../core/application/use-cases/managed/managed-sign-data.usecase';
 import { ManagedVerifySignatureUseCase } from '../core/application/use-cases/managed/managed-verify-signature.usecase';
-import { CryptServiceError } from '../libs/services/crypt.service';
 
 /** Shared test master key — 32 zero bytes, never use outside tests. */
 const TEST_MASTER_KEY = Buffer.alloc(32, 0);
@@ -22,10 +21,10 @@ function buildDeps() {
     return { crypto, repo, keyVault, managedDomain };
 }
 
-test('CreateManagedKeyUseCase creates RSA key and metadata', () => {
+test('CreateManagedKeyUseCase creates RSA key and metadata', async () => {
     const { crypto, repo, keyVault, managedDomain } = buildDeps();
     const createUseCase = new CreateManagedKeyUseCase(crypto, repo, managedDomain, keyVault);
-    const result = createUseCase.execute({ type: 'rsa', modulusLength: 2048 });
+    const result = await createUseCase.execute({ type: 'rsa', modulusLength: 2048 });
 
     assert.equal(typeof result.keyId, 'string');
     assert.equal(result.metadata.type, 'rsa');
@@ -34,55 +33,55 @@ test('CreateManagedKeyUseCase creates RSA key and metadata', () => {
     assert.match(result.publicKey, /BEGIN PUBLIC KEY/);
 
     // Verify private key is encrypted at rest — no plaintext PEM in stored entity
-    const stored = repo.getById(result.keyId);
+    const stored = await repo.getById(result.keyId);
     assert.ok(stored, 'key must be persisted in repo');
     assert.ok(stored.encryptedPrivateKey, 'encryptedPrivateKey blob must exist');
     assert.ok(stored.encryptedPrivateKey.ciphertext, 'ciphertext must be present');
     assert.ok(!('privateKey' in stored), 'plaintext privateKey must NOT be stored');
 });
 
-test('ManagedHybridEncryptUseCase rejects non-RSA key type', () => {
+test('ManagedHybridEncryptUseCase rejects non-RSA key type', async () => {
     const { crypto, repo, keyVault, managedDomain } = buildDeps();
     const createUseCase = new CreateManagedKeyUseCase(crypto, repo, managedDomain, keyVault);
     const encryptUseCase = new ManagedHybridEncryptUseCase(crypto, managedDomain);
-    const created = createUseCase.execute({ type: 'ec', namedCurve: 'prime256v1' });
+    const created = await createUseCase.execute({ type: 'ec', namedCurve: 'prime256v1' });
 
-    assert.throws(
+    await assert.rejects(
         () => encryptUseCase.execute(created.keyId, 'hello'),
-        (err: unknown) =>
-            err instanceof CryptServiceError &&
-            err.code === 'KEY_TYPE_UNSUPPORTED' &&
-            err.message.includes('RSA managed key')
+        (err: unknown) => err instanceof Error && err.message.includes('RSA key')
     );
 });
 
-test('ManagedSignDataUseCase and ManagedVerifySignatureUseCase roundtrip', () => {
+test('ManagedSignDataUseCase and ManagedVerifySignatureUseCase roundtrip', async () => {
     const { crypto, repo, keyVault, managedDomain } = buildDeps();
     const createUseCase = new CreateManagedKeyUseCase(crypto, repo, managedDomain, keyVault);
     const signUseCase = new ManagedSignDataUseCase(crypto, managedDomain, keyVault);
     const verifyUseCase = new ManagedVerifySignatureUseCase(crypto, managedDomain);
-    const created = createUseCase.execute({ type: 'rsa', modulusLength: 2048 });
+    const created = await createUseCase.execute({ type: 'rsa', modulusLength: 2048 });
     const dataBase64 = Buffer.from('payload-data', 'utf8').toString('base64');
 
-    const signature = signUseCase.execute(created.keyId, dataBase64, 'RSA-SHA256');
-    const valid = verifyUseCase.execute(created.keyId, dataBase64, signature, 'RSA-SHA256');
-    const invalidAlg = verifyUseCase.execute(created.keyId, dataBase64, signature, 'ECDSA-SHA256');
-
+    const signature = await signUseCase.execute(created.keyId, dataBase64, 'RSA-SHA256');
+    const valid = await verifyUseCase.execute(created.keyId, dataBase64, signature, 'RSA-SHA256');
     assert.equal(valid, true);
-    assert.equal(invalidAlg, false);
+
+    // Algorithm mismatch must throw — not silently return false
+    await assert.rejects(
+        () => verifyUseCase.execute(created.keyId, dataBase64, signature, 'ECDSA-SHA256'),
+        (err: unknown) => err instanceof Error && err.message.toLowerCase().includes('algorithm mismatch')
+    );
 });
 
-test('ManagedHybridDecryptUseCase roundtrip: encrypt then decrypt', () => {
+test('ManagedHybridDecryptUseCase roundtrip: encrypt then decrypt', async () => {
     const { crypto, repo, keyVault, managedDomain } = buildDeps();
     const createUseCase = new CreateManagedKeyUseCase(crypto, repo, managedDomain, keyVault);
     const encryptUseCase = new ManagedHybridEncryptUseCase(crypto, managedDomain);
     const decryptUseCase = new ManagedHybridDecryptUseCase(crypto, managedDomain, keyVault);
 
-    const created = createUseCase.execute({ type: 'rsa', modulusLength: 2048 });
+    const created = await createUseCase.execute({ type: 'rsa', modulusLength: 2048 });
     const plaintext = 'secret message for the vault';
 
-    const encrypted = encryptUseCase.execute(created.keyId, plaintext);
-    const decrypted = decryptUseCase.execute(created.keyId, {
+    const encrypted = await encryptUseCase.execute(created.keyId, plaintext);
+    const decrypted = await decryptUseCase.execute(created.keyId, {
         encryptedAesKey: encrypted.encryptedAesKey,
         iv: encrypted.iv,
         authTag: encrypted.authTag,

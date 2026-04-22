@@ -2,6 +2,7 @@ import { CryptServiceError } from '../../../../libs/services/crypt.service';
 import { ManagedKey, RotationPolicy } from '../../../domain/managed-key';
 import { ManagedKeyRepositoryPort } from '../../ports/managed-key-repository.port';
 import { ManagedKeyDomainService } from '../../services/managed-key-domain.service';
+import { auditLog } from '../../../../infrastructure/audit/audit-logger';
 
 export class SetRotationPolicyUseCase {
     constructor(
@@ -9,17 +10,15 @@ export class SetRotationPolicyUseCase {
         private readonly managedDomain: ManagedKeyDomainService
     ) {}
 
-    execute(keyId: string, policy: RotationPolicy) {
+    async execute(keyId: string, policy: RotationPolicy, clientIp = 'system') {
         if (policy.ttlDays < 1 || policy.ttlDays > 3650) {
-            throw new CryptServiceError(
-                'ttlDays must be between 1 and 3650 (10 years)',
-                'INVALID_ROTATION_POLICY'
-            );
+            throw new CryptServiceError('ttlDays must be between 1 and 3650', 'INVALID_ROTATION_POLICY');
         }
-        const key = this.managedDomain.getActiveOrThrow(keyId);
+        const key = await this.managedDomain.getActiveOrThrow(keyId);
         const nextRotationAt = this.managedDomain.computeNextRotationAt(policy.ttlDays);
         const updated: ManagedKey = { ...key, rotationPolicy: policy, nextRotationAt };
-        this.managedKeyRepo.save(updated);
+        await this.managedKeyRepo.save(updated);
+        auditLog({ event: 'key.policy.set', keyId, ttlDays: policy.ttlDays, ip: clientIp });
         return this.managedDomain.toMetadata(updated);
     }
 }

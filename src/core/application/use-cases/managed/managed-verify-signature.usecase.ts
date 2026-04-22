@@ -8,13 +8,9 @@ export class ManagedVerifySignatureUseCase {
         private readonly managedDomain: ManagedKeyDomainService
     ) {}
 
-    execute(keyId: string, dataBase64: string, signatureBase64: string, algorithm: SignAlg) {
-        const key = this.managedDomain.getActiveOrThrow(keyId);
-        try {
-            this.managedDomain.assertSignAlgorithm(key, algorithm);
-        } catch {
-            return false;
-        }
+    async execute(keyId: string, dataBase64: string, signatureBase64: string, algorithm: SignAlg) {
+        const key = await this.managedDomain.getOrThrow(keyId);
+        this.managedDomain.assertSignAlgorithm(key, algorithm);
         return this.cryptoProvider.verifySignature(dataBase64, signatureBase64, key.publicKey, algorithm);
     }
 }

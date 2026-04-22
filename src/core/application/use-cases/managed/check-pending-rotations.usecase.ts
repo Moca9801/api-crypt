@@ -16,11 +16,10 @@ export class CheckPendingRotationsUseCase {
         private readonly managedDomain: ManagedKeyDomainService
     ) {}
 
-    /** Retorna claves activas con política cuya rotación ocurre en <= warningDays días. */
-    execute(warningDays = 7): PendingRotationInfo[] {
+    async execute(warningDays = 7): Promise<PendingRotationInfo[]> {
         const now = Date.now();
-        return this.managedKeyRepo
-            .list()
+        const keys = await this.managedKeyRepo.list();
+        return keys
             .filter((k): k is ManagedKey & { nextRotationAt: string } =>
                 k.status === 'active' && k.nextRotationAt !== undefined
             )
@@ -29,7 +28,7 @@ export class CheckPendingRotationsUseCase {
                 const daysUntilRotation = Math.max(0, Math.ceil(msLeft / 86_400_000));
                 return { keyId: k.keyId, daysUntilRotation, nextRotationAt: k.nextRotationAt, algorithm: k.algorithm, type: k.type };
             })
-            .filter((info) => info.daysUntilRotation <= warningDays)
+            .filter((i) => i.daysUntilRotation <= warningDays)
             .sort((a, b) => a.daysUntilRotation - b.daysUntilRotation);
     }
 }

@@ -30,19 +30,15 @@ export class ManagedKeyDomainService {
         };
     }
 
-    getOrThrow(keyId: string): ManagedKey {
-        const key = this.managedKeyRepo.getById(keyId);
-        if (!key) {
-            throw new CryptServiceError(`Unknown keyId: ${keyId}`, 'KEY_NOT_FOUND');
-        }
+    async getOrThrow(keyId: string): Promise<ManagedKey> {
+        const key = await this.managedKeyRepo.getById(keyId);
+        if (!key) throw new CryptServiceError(`Unknown keyId: ${keyId}`, 'KEY_NOT_FOUND');
         return key;
     }
 
-    getActiveOrThrow(keyId: string): ManagedKey {
-        const key = this.getOrThrow(keyId);
-        if (key.status !== 'active') {
-            throw new CryptServiceError(`Key ${keyId} is disabled`, 'KEY_DISABLED');
-        }
+    async getActiveOrThrow(keyId: string): Promise<ManagedKey> {
+        const key = await this.getOrThrow(keyId);
+        if (key.status !== 'active') throw new CryptServiceError(`Key ${keyId} is disabled`, 'KEY_DISABLED');
         return key;
     }
 
@@ -56,9 +52,7 @@ export class ManagedKeyDomainService {
         }
     }
 
-    /** Calcula la fecha de próxima rotación dado un TTL en días. */
     computeNextRotationAt(ttlDays: number, fromDate = new Date()): string {
-        const next = new Date(fromDate.getTime() + ttlDays * 86_400_000);
-        return next.toISOString();
+        return new Date(fromDate.getTime() + ttlDays * 86_400_000).toISOString();
     }
 }
