@@ -154,5 +154,10 @@ dist
 # api-crypt specific
 keys.db.json
 test-sdk.ts
+# Keep empty data directories in git so docker bind mounts work on new clones
+!data/
+!data/.gitkeep
+!data-dev/
+!data-dev/.gitkeep
 data/
 data-dev/
