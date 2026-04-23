@@ -94,6 +94,8 @@ Patterns currently applied:
 - **Dependency Inversion** from application service to abstractions
 - **Controller pattern** with thin route handlers
 
+## Quick Start (Local)
+
 ```bash
 npm install
 npm run dev
@@ -124,9 +126,16 @@ docker compose up -d --build
 
 Before running the service (locally or via Docker), you must generate secure 64-character hex strings for your `API_KEY` and `MASTER_KEY`.
 
-Run this command in your terminal to generate a key:
+Run one of these commands in your terminal to generate a key:
+
+**Option A: Using Node.js (Cross-platform)**
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+**Option B: Using OpenSSL (Linux/macOS)**
+```bash
+openssl rand -hex 32
 ```
 
 1.  **API_KEY**: Used to authenticate your backend requests to this microservice.
