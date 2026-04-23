@@ -94,14 +94,43 @@ Patterns currently applied:
 - **Dependency Inversion** from application service to abstractions
 - **Controller pattern** with thin route handlers
 
-## Quick start
-
 ```bash
 npm install
 npm run dev
 ```
 
 Default server: `http://localhost:3000`
+
+## Docker Support
+
+This microservice is containerized for easy deployment and development.
+
+### Development (Hot-Reload)
+Runs the service with `nodemon` and mounts your `src` folder for real-time updates.
+```bash
+npm run docker:dev
+```
+*Accessible at: `http://localhost:3000`*
+
+### Production (Hardened)
+Builds a production-ready image with security hardening (`read_only` filesystem, no-privileges, etc.).
+```bash
+docker compose up -d --build
+```
+
+---
+
+## Security Setup: Generating Keys
+
+Before running the service (locally or via Docker), you must generate secure 64-character hex strings for your `API_KEY` and `MASTER_KEY`.
+
+Run this command in your terminal to generate a key:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+1.  **API_KEY**: Used to authenticate your backend requests to this microservice.
+2.  **MASTER_KEY**: **CRITICAL**. This key encrypts all managed private keys stored on disk. If lost, all stored keys are unrecoverable.
 
 ## Environment variables
 
