@@ -25,7 +25,7 @@ services:
       PORT: 3000
       # ── Seguridad — OBLIGATORIAS en producción ──────────────────────────────
       API_KEY: ${API_KEY:?API_KEY is required. Set it in your .env file.}
-      MASTER_KEY: ${MASTER_KEY:?MASTER_KEY is required (64 hex chars). Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"}
+      MASTER_KEY: "${MASTER_KEY:?MASTER_KEY is required (64 hex chars). Generate using node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"}"
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required in production (e.g. https://myapp.com)}
       # ── Persistencia ────────────────────────────────────────────────────────
       KEYS_DB_PATH: /data/keys.db.json

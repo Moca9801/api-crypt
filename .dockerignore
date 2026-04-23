@@ -1,10 +1,9 @@
 # Dependencies
 node_modules/
 
-# TypeScript sources (not needed in image — only dist/)
-src/
-
 # Build artifacts (rebuilt inside Docker)
+# Nota: no ignorar src/ — el stage builder hace COPY src/ y compila; la imagen
+# final (runner) solo recibe dist/, no las fuentes.
 dist/
 
 # Environment files — NEVER en la imagen
